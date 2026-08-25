@@ -34,10 +34,10 @@ export default function OverviewTab() {
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[820px] text-sm">
+    <div className="overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 bg-white max-h-[700px]">
+      <table className="w-full min-w-[820px] text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <th className="px-4 py-3">Angajat</th>
               <th className="px-4 py-3">Departament</th>
               <th className="px-4 py-3">Funcție</th>

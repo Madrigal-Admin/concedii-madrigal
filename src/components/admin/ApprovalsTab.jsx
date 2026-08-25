@@ -146,6 +146,9 @@ export default function ApprovalsTab() {
                   {r.leave_type} · {formatDate(r.start_date)} → {formatDate(r.end_date)} ·{' '}
                   {r.working_days} zile
                 </p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Cerere trimisă pe {formatDate(r.created_at)}
+                </p>
                 {r.reason && <p className="mt-1 text-xs italic text-slate-400">„{r.reason}”</p>}
               </div>
               <div className="flex gap-2">
@@ -190,6 +193,9 @@ export default function ApprovalsTab() {
                     {isApproved ? 'Aprobat' : 'Respins'}
                   </span>
                 </div>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Cerere trimisă pe {formatDate(r.created_at)}
+                </p>
 
                 {isApproved && !isEditing && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">

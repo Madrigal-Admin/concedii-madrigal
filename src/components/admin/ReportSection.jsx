@@ -3,6 +3,7 @@ import { Download, Printer, ListChecks } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
 import { formatDate, STATUS_LABELS } from '../../lib/leaveCalculations'
+import EmployeeMultiSelect from './EmployeeMultiSelect'
 
 export default function ReportSection() {
   const [employees, setEmployees] = useState([])
@@ -186,33 +187,13 @@ export default function ReportSection() {
         </div>
 
         <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-xs font-medium text-slate-600">
-              Angajați {selectedIds.size === 0 ? '(toți, implicit)' : `(${selectedIds.size} selectați)`}
-            </label>
-            <button
-              onClick={toggleAll}
-              className="text-xs font-medium text-brand-600 hover:underline focus-ring"
-            >
-              {selectedIds.size === employees.length ? 'Deselectează tot' : 'Selectează tot'}
-            </button>
-          </div>
-          <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
-            {employees.map((emp) => (
-              <label
-                key={emp.id}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(emp.id)}
-                  onChange={() => toggleEmployee(emp.id)}
-                  className="rounded"
-                />
-                {emp.full_name}
-              </label>
-            ))}
-          </div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Angajați</label>
+          <EmployeeMultiSelect
+            employees={employees}
+            selectedIds={selectedIds}
+            onToggle={toggleEmployee}
+            onToggleAll={toggleAll}
+          />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">

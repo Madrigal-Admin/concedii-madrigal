@@ -1,4 +1,4 @@
-import { CalendarDays, LogOut, UserRound } from 'lucide-react'
+import { LogOut, UserRound } from 'lucide-react'
 
 export default function Navbar({ view, setView, session, role, onLogout }) {
   return (
@@ -8,15 +8,7 @@ export default function Navbar({ view, setView, session, role, onLogout }) {
           onClick={() => setView('public')}
           className="flex items-center gap-2 text-left focus-ring rounded"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-            <CalendarDays size={18} />
-          </span>
-          <span>
-            <span className="block font-display text-lg font-semibold leading-tight text-ink">
-              Concedii Madrigal
-            </span>
-            <span className="block text-xs text-slate-500">gestiune zile de concediu</span>
-          </span>
+          <img src="/logo.png" alt="Madrigal" className="h-10 w-auto" />
         </button>
 
         <nav className="flex items-center gap-2 text-sm">
