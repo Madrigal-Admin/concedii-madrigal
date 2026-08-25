@@ -157,7 +157,7 @@ export default function ReportSection() {
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   return (
-    <div className="mt-8">
+    <div>
       <div className="mb-3 flex items-center gap-2">
         <ListChecks size={18} className="text-brand-600" />
         <h3 className="font-display text-lg font-semibold text-ink">Raport pe perioadă și angajați</h3>

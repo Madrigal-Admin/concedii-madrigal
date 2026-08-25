@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { calculateBalance } from '../../lib/leaveCalculations'
-import ReportSection from './ReportSection'
 
 export default function OverviewTab() {
   const [rows, setRows] = useState([])
@@ -35,8 +34,7 @@ export default function OverviewTab() {
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   return (
-    <div>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[820px] text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -78,10 +76,7 @@ export default function OverviewTab() {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-
-      <ReportSection />
+      </table>
     </div>
   )
 }

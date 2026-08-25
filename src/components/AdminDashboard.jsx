@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import ApprovalsTab from './admin/ApprovalsTab'
-import EmployeesTab from './admin/EmployeesTab'
 import RecoveriesTab from './admin/RecoveriesTab'
 import OverviewTab from './admin/OverviewTab'
+import ReportsTab from './admin/ReportsTab'
 import SettingsTab from './admin/SettingsTab'
 
 const TABS = [
   { key: 'approvals', label: 'Aprobări' },
-  { key: 'employees', label: 'Angajați' },
   { key: 'recoveries', label: 'Recuperări' },
   { key: 'overview', label: 'Privire generală' },
+  { key: 'reports', label: 'Rapoarte' },
   { key: 'settings', label: 'Setări' },
 ]
 
@@ -36,9 +36,9 @@ export default function AdminDashboard() {
 
       <div className="mt-6">
         {tab === 'approvals' && <ApprovalsTab />}
-        {tab === 'employees' && <EmployeesTab />}
         {tab === 'recoveries' && <RecoveriesTab />}
         {tab === 'overview' && <OverviewTab />}
+        {tab === 'reports' && <ReportsTab />}
         {tab === 'settings' && <SettingsTab />}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
+import EmployeesTab from './EmployeesTab'
 
 function ListManager({ title, table, hint }) {
   const [items, setItems] = useState([])
@@ -91,23 +92,33 @@ function ListManager({ title, table, hint }) {
 
 export default function SettingsTab() {
   return (
-    <div>
-      <p className="mb-4 text-sm text-slate-500">
-        Aceste liste alimentează dropdown-urile din formularul de angajați, ca toată lumea să
-        scrie departamentele și funcțiile la fel.
-      </p>
-      <div className="grid gap-6 sm:grid-cols-2">
-        <ListManager
-          title="Departamente"
-          table="departments"
-          hint="ex: Soprane, Alte, Tenori, Bași, Administrativ"
-        />
-        <ListManager
-          title="Funcții"
-          table="positions"
-          hint="ex: Corist, Dirijor, Corepetitor, Manager"
-        />
-      </div>
+    <div className="space-y-10">
+      <section>
+        <h3 className="mb-3 font-display text-lg font-semibold text-ink">Angajați</h3>
+        <EmployeesTab />
+      </section>
+
+      <section>
+        <h3 className="mb-1 font-display text-lg font-semibold text-ink">
+          Liste prestabilite (departamente și funcții)
+        </h3>
+        <p className="mb-4 text-sm text-slate-500">
+          Aceste liste alimentează dropdown-urile din formularul de angajați, ca toată lumea să
+          scrie departamentele și funcțiile la fel.
+        </p>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <ListManager
+            title="Departamente"
+            table="departments"
+            hint="ex: Soprane, Alte, Tenori, Bași, Administrativ"
+          />
+          <ListManager
+            title="Funcții"
+            table="positions"
+            hint="ex: Corist, Dirijor, Corepetitor, Manager"
+          />
+        </div>
+      </section>
     </div>
   )
 }
