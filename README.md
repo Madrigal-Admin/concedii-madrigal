@@ -82,14 +82,35 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
+## Actualizare — funcții noi adăugate ulterior
+
+Dacă ai instalat deja aplicația și ai primit o versiune nouă de la mine cu îmbunătățiri
+(ex. departamente/funcții din listă, raport exportabil, distribuția editabilă a zilelor
+scăzute), trebuie să faci **două lucruri**, o singură dată:
+
+1. **Rulează fișierul `migration_2_departments_positions_deductions.sql`** — deschide-l cu
+   un editor de text, copiază tot conținutul, lipește-l în Supabase → **SQL Editor** →
+   **New query**, apoi **Run** (confirmă avertismentul standard).
+2. **Re-urcă fișierele pe GitHub** — la fel ca prima dată: intri în repo-ul
+   `concedii-madrigal` → **Add file → Upload files** → tragi toate fișierele din folderul
+   `leave-app` peste cele existente → **Commit changes**. Netlify republică automat în
+   1-2 minute.
+
+După acest pas, du-te în **Panoul Admin → Setări** și verifică/completează listele de
+departamente și funcții, apoi editează fiecare angajat (tab **Angajați**) ca să-i asociezi
+noul departament din listă (angajații vechi au fost legați automat, dar merită verificat).
+
 ## Cum se folosește aplicația
 
 - **Angajații** intră pe link, completează formularul (nume din listă, tip concediu, perioadă) — fără cont, fără parolă.
 - **Tu (Admin)** apeși pe "Autentificare" din partea de sus, te loghezi cu contul creat la Partea 1, și ajungi în Panoul Admin unde:
-  - adaugi/editezi/ștergi angajați (tab **Angajați**)
-  - aprobi sau respingi cereri (tab **Aprobări**)
+  - adaugi/editezi/ștergi angajați, cu departament și funcție alese dintr-o listă (tab **Angajați**)
+  - gestionezi listele de departamente și funcții (tab **Setări**)
+  - aprobi sau respingi cereri; la aprobare, aplicația calculează automat din ce categorii
+    se scad zilele, iar tu poți corecta manual distribuția dacă e cazul (tab **Aprobări**)
   - adaugi zile de recuperare pentru ore suplimentare (tab **Recuperări**)
-  - vezi soldul tuturor angajaților dintr-o privire (tab **Privire generală**)
+  - vezi soldul tuturor angajaților, plus un raport filtrabil pe perioadă și pe angajați,
+    exportabil în Excel sau printabil direct din browser (tab **Privire generală**)
 - **Angajații care vor cont** (opțional) apasă "Autentificare" → "Sunt angajat, vreau cont" și își creează un cont folosind **exact același email** cu care au fost adăugați în sistem de tine. După asta se pot loga oricând să-și vadă soldul detaliat.
 
 ## Cum faci modificări mai târziu

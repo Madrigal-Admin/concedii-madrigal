@@ -44,7 +44,7 @@ export default function App() {
 
     const { data: empRow } = await supabase
       .from('employees')
-      .select('*')
+      .select('*, department:departments(name), position:positions(name)')
       .eq('email', email)
       .maybeSingle()
 

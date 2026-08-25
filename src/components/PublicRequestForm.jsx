@@ -20,7 +20,7 @@ export default function PublicRequestForm() {
   async function loadEmployees() {
     const { data, error } = await supabase
       .from('employees')
-      .select('id, full_name, department')
+      .select('id, full_name, department:departments(name)')
       .order('full_name')
     if (!error) setEmployees(data || [])
   }
@@ -102,7 +102,7 @@ export default function PublicRequestForm() {
             <option value="">Selectează din listă…</option>
             {employees.map((emp) => (
               <option key={emp.id} value={emp.id}>
-                {emp.full_name} {emp.department ? `— ${emp.department}` : ''}
+                {emp.full_name} {emp.department?.name ? `— ${emp.department.name}` : ''}
               </option>
             ))}
           </select>

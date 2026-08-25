@@ -47,7 +47,9 @@ export default function EmployeeDashboard({ employee }) {
       <h1 className="font-display text-2xl font-semibold text-ink">
         Bună, {employee.full_name.split(' ')[0]}
       </h1>
-      <p className="mt-1 text-sm text-slate-500">{employee.department}</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {employee.department?.name} {employee.position?.name ? `· ${employee.position.name}` : ''}
+      </p>
 
       <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
         <p className="text-sm font-medium text-brand-800">Sold total disponibil</p>

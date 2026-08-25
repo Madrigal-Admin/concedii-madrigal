@@ -5,7 +5,7 @@ export const LEAVE_TYPES = ['Odihnă', 'Medical', 'Fără Plată', 'Evenimente S
 
 // Doar aceste tipuri de concediu scad din soldul de zile de odihnă.
 // Medical și Fără Plată sunt informative, nu consumă soldul.
-const TYPES_THAT_DEDUCT_BALANCE = ['Odihnă', 'Evenimente Speciale']
+export const TYPES_THAT_DEDUCT_BALANCE = ['Odihnă', 'Evenimente Speciale']
 
 // Calculează numărul de zile lucrătoare (luni-vineri) dintre două date, inclusiv.
 export function countWorkingDays(startDate, endDate) {
@@ -30,12 +30,11 @@ function june30(year) {
 }
 
 /**
- * Calculează soldul unui angajat, defalcat pe categorii, aplicând ordinea
- * strictă de scădere cerută:
- *   1. Recuperări (ore suplimentare)
- *   2. Zile din urmă cu 2 ani (Y-2) — dacă nu au expirat (înainte de 30 iunie)
- *   3. Zile din anul trecut (Y-1)
- *   4. Zile din anul curent (Y) — poate deveni negativ
+ * Calculează soldul unui angajat, defalcat pe categorii, pe baza distribuției
+ * REALE salvate la fiecare cerere aprobată (coloanele deducted_recoveries,
+ * deducted_y2, deducted_y1, deducted_y). Distribuția e stabilită automat la
+ * momentul aprobării (vezi computeDefaultSplit) și poate fi corectată manual
+ * de un Admin din pagina Aprobări.
  *
  * @param {object} employee - rândul din tabela employees (are base_annual_days)
  * @param {array} approvedRequests - cererile APROBATE ale angajatului
@@ -55,31 +54,20 @@ export function calculateBalance(employee, approvedRequests, recoveries, asOf = 
   // poți extinde tabela employees cu coloane separate mai târziu.
   const base = Number(employee.base_annual_days) || 0
 
-  let poolRecoveries = recoveries.reduce((sum, r) => sum + Number(r.days || 0), 0)
-  let poolY2 = y2Expired ? 0 : base
-  let poolY1 = base
-  let poolY = base
+  const totalRecoveriesEarned = recoveries.reduce((s, r) => s + Number(r.days || 0), 0)
 
-  // Totalul de zile de dedus, din toate cererile aprobate care consumă sold.
-  const totalToDeduct = approvedRequests
-    .filter((r) => TYPES_THAT_DEDUCT_BALANCE.includes(r.leave_type))
-    .reduce((sum, r) => sum + Number(r.working_days || 0), 0)
+  const usedRecoveries = sumField(approvedRequests, 'deducted_recoveries')
+  const usedY2 = sumField(approvedRequests, 'deducted_y2')
+  const usedY1 = sumField(approvedRequests, 'deducted_y1')
+  const usedY = sumField(approvedRequests, 'deducted_y')
 
-  let remaining = totalToDeduct
-
-  const takeFrom = (pool) => {
-    const used = Math.min(pool, remaining)
-    remaining -= used
-    return pool - used
-  }
-
-  poolRecoveries = takeFrom(poolRecoveries)
-  poolY2 = takeFrom(poolY2)
-  poolY1 = takeFrom(poolY1)
-  // Din anul curent scade tot ce a mai rămas, chiar dacă devine negativ.
-  poolY = poolY - remaining
+  const poolRecoveries = totalRecoveriesEarned - usedRecoveries
+  const poolY2 = (y2Expired ? 0 : base) - usedY2
+  const poolY1 = base - usedY1
+  const poolY = base - usedY
 
   const total = poolRecoveries + poolY2 + poolY1 + poolY
+  const totalUsed = usedRecoveries + usedY2 + usedY1 + usedY
 
   return {
     year: yearY,
@@ -91,9 +79,38 @@ export function calculateBalance(employee, approvedRequests, recoveries, asOf = 
     y1: round1(poolY1),
     y: round1(poolY),
     total: round1(total),
-    totalUsed: round1(totalToDeduct),
-    totalRecoveriesEarned: round1(recoveries.reduce((s, r) => s + Number(r.days || 0), 0)),
+    totalUsed: round1(totalUsed),
+    totalRecoveriesEarned: round1(totalRecoveriesEarned),
   }
+}
+
+function sumField(rows, field) {
+  return rows.reduce((sum, r) => sum + Number(r[field] || 0), 0)
+}
+
+/**
+ * Determină automat distribuția de zile la APROBAREA unei cereri, aplicând
+ * ordinea strictă cerută: 1) Recuperări, 2) Y-2 (dacă nu a expirat),
+ * 3) Y-1, 4) Y (poate deveni negativ). "pools" trebuie să conțină soldul
+ * RĂMAS înainte de această cerere (adică balance.recoveries / y2 / y1 / y
+ * calculate din cererile deja aprobate anterior).
+ */
+export function computeDefaultSplit(workingDaysToDeduct, pools) {
+  let remaining = Number(workingDaysToDeduct) || 0
+
+  const take = (available) => {
+    const usable = Math.max(0, available)
+    const used = Math.min(usable, remaining)
+    remaining -= used
+    return round1(used)
+  }
+
+  const recoveries = take(pools.recoveries)
+  const y2 = take(pools.y2)
+  const y1 = take(pools.y1)
+  const y = round1(remaining) // ce mai rămâne merge pe anul curent, chiar și negativ ca sold rezultat
+
+  return { recoveries, y2, y1, y }
 }
 
 function round1(n) {

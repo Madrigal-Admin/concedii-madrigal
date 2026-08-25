@@ -3,12 +3,14 @@ import ApprovalsTab from './admin/ApprovalsTab'
 import EmployeesTab from './admin/EmployeesTab'
 import RecoveriesTab from './admin/RecoveriesTab'
 import OverviewTab from './admin/OverviewTab'
+import SettingsTab from './admin/SettingsTab'
 
 const TABS = [
   { key: 'approvals', label: 'Aprobări' },
   { key: 'employees', label: 'Angajați' },
   { key: 'recoveries', label: 'Recuperări' },
   { key: 'overview', label: 'Privire generală' },
+  { key: 'settings', label: 'Setări' },
 ]
 
 export default function AdminDashboard() {
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
         {tab === 'employees' && <EmployeesTab />}
         {tab === 'recoveries' && <RecoveriesTab />}
         {tab === 'overview' && <OverviewTab />}
+        {tab === 'settings' && <SettingsTab />}
       </div>
     </div>
   )

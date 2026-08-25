@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Pencil, Save, X as XIcon } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 
-const empty = { full_name: '', email: '', department: '', base_annual_days: 21 }
+const empty = { full_name: '', email: '', department_id: '', position_id: '', base_annual_days: 21 }
 
 export default function EmployeesTab() {
   const [employees, setEmployees] = useState([])
+  const [departments, setDepartments] = useState([])
+  const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState(null)
@@ -17,8 +19,17 @@ export default function EmployeesTab() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('employees').select('*').order('full_name')
-    setEmployees(data || [])
+    const [{ data: emps }, { data: depts }, { data: pos }] = await Promise.all([
+      supabase
+        .from('employees')
+        .select('*, department:departments(id, name), position:positions(id, name)')
+        .order('full_name'),
+      supabase.from('departments').select('*').order('name'),
+      supabase.from('positions').select('*').order('name'),
+    ])
+    setEmployees(emps || [])
+    setDepartments(depts || [])
+    setPositions(pos || [])
     setLoading(false)
   }
 
@@ -27,7 +38,8 @@ export default function EmployeesTab() {
     setForm({
       full_name: emp.full_name,
       email: emp.email || '',
-      department: emp.department || '',
+      department_id: emp.department_id || '',
+      position_id: emp.position_id || '',
       base_annual_days: emp.base_annual_days,
     })
   }
@@ -46,7 +58,8 @@ export default function EmployeesTab() {
     const payload = {
       full_name: form.full_name.trim(),
       email: form.email.trim().toLowerCase() || null,
-      department: form.department.trim() || null,
+      department_id: form.department_id || null,
+      position_id: form.position_id || null,
       base_annual_days: Number(form.base_annual_days) || 0,
     }
 
@@ -96,11 +109,43 @@ export default function EmployeesTab() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Departament</label>
-          <input
-            value={form.department}
-            onChange={(e) => setForm({ ...form, department: e.target.value })}
+          <select
+            value={form.department_id}
+            onChange={(e) => setForm({ ...form, department_id: e.target.value })}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          />
+          >
+            <option value="">Fără departament</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          {departments.length === 0 && (
+            <p className="mt-1 text-xs text-amber-600">
+              Nu ai niciun departament definit — adaugă din tab-ul "Setări".
+            </p>
+          )}
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Funcție</label>
+          <select
+            value={form.position_id}
+            onChange={(e) => setForm({ ...form, position_id: e.target.value })}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+          >
+            <option value="">Fără funcție</option>
+            {positions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          {positions.length === 0 && (
+            <p className="mt-1 text-xs text-amber-600">
+              Nu ai nicio funcție definită — adaugă din tab-ul "Setări".
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Zile de bază / an</label>
@@ -149,8 +194,8 @@ export default function EmployeesTab() {
                 <div>
                   <p className="text-sm font-medium text-ink">{emp.full_name}</p>
                   <p className="text-xs text-slate-500">
-                    {emp.department || '—'} · {emp.base_annual_days} zile/an{' '}
-                    {emp.email ? `· ${emp.email}` : ''}
+                    {emp.department?.name || '—'} {emp.position?.name ? `· ${emp.position.name}` : ''} ·{' '}
+                    {emp.base_annual_days} zile/an {emp.email ? `· ${emp.email}` : ''}
                   </p>
                 </div>
                 <div className="flex gap-1">
