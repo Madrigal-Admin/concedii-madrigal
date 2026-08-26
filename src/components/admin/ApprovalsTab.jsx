@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown } from 'lucide-react'
+import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown, FileDown } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import {
   formatDate,
@@ -10,6 +10,7 @@ import {
   TYPES_THAT_DEDUCT_BALANCE,
   LEAVE_TYPES,
 } from '../../lib/leaveCalculations'
+import { downloadFilledLeaveRequestDocx, templateSupportsType } from '../../lib/generateLeaveDocx'
 
 const now = new Date()
 const CURRENT_YEAR = now.getFullYear()
@@ -19,11 +20,14 @@ const YEAR_Y = CURRENT_YEAR
 
 export default function ApprovalsTab() {
   const [requests, setRequests] = useState([])
+  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({ recoveries: 0, y2: 0, y1: 0, y: 0 })
   const [editError, setEditError] = useState('')
+  const [docBusyId, setDocBusyId] = useState(null)
+  const [docErrorId, setDocErrorId] = useState(null)
 
   useEffect(() => {
     load()
@@ -31,12 +35,25 @@ export default function ApprovalsTab() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('leave_requests')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const [{ data }, { data: emps }] = await Promise.all([
+      supabase.from('leave_requests').select('*').order('created_at', { ascending: false }),
+      supabase.from('employees').select('id, department:departments(name), position:positions(name)'),
+    ])
     setRequests(data || [])
+    setEmployees(emps || [])
     setLoading(false)
+  }
+
+  async function handleDownloadDocx(request) {
+    setDocErrorId(null)
+    setDocBusyId(request.id)
+    try {
+      const employee = employees.find((e) => e.id === request.employee_id)
+      await downloadFilledLeaveRequestDocx(request, employee)
+    } catch (err) {
+      setDocErrorId(request.id)
+    }
+    setDocBusyId(null)
   }
 
   async function approve(request) {
@@ -250,7 +267,19 @@ export default function ApprovalsTab() {
                     >
                       <Pencil size={12} /> Editează distribuția
                     </button>
+                    {templateSupportsType(r.leave_type) && (
+                      <button
+                        onClick={() => handleDownloadDocx(r)}
+                        disabled={docBusyId === r.id}
+                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50 focus-ring"
+                      >
+                        <FileDown size={12} /> {docBusyId === r.id ? 'Se generează…' : 'Descarcă cererea (.docx)'}
+                      </button>
+                    )}
                   </div>
+                )}
+                {isApproved && !isEditing && docErrorId === r.id && (
+                  <p className="mt-1 text-xs text-rose-600">Nu am putut genera documentul. Încearcă din nou.</p>
                 )}
 
                 {isApproved && isEditing && (

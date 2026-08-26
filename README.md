@@ -82,7 +82,21 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — zile libere legale, concediu medical restricționat, calcule pe tipuri
+## Actualizare — generare automată a documentului "Cerere de concediu" (.docx)
+
+Din Panoul Admin → **Aprobări**, la fiecare cerere aprobată de tip Odihnă, Fără plată sau
+Evenimente speciale, apare acum un buton **"Descarcă cererea (.docx)"** care generează
+documentul oficial completat automat cu numele, departamentul, funcția, perioada, numărul de
+zile și bifa corectă la tipul de concediu — pornind de la template-ul tău.
+
+Nu este nevoie de nicio modificare în Supabase pentru asta (nu ține de baza de date). Doar
+re-urcă fișierele pe GitHub, ca de obicei.
+
+Concediul medical nu are buton de descărcare aici, pentru că template-ul e gândit pentru
+celelalte 3 tipuri — concediul medical se justifică de obicei direct prin certificatul medical.
+Dacă vrei și pentru el un document similar, spune-mi și îl adaug separat.
+
+
 
 Cea mai recentă actualizare aduce mai multe schimbări legate:
 
