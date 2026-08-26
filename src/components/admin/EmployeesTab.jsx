@@ -2,12 +2,28 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Pencil, Save, X as XIcon } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 
-const empty = { full_name: '', email: '', department_id: '', position_id: '', base_annual_days: 21 }
+const CURRENT_YEAR = new Date().getFullYear()
+const YEAR_Y2 = CURRENT_YEAR - 2
+const YEAR_Y1 = CURRENT_YEAR - 1
+const YEAR_Y = CURRENT_YEAR
+
+const empty = {
+  full_name: '',
+  email: '',
+  department_id: '',
+  position_id: '',
+  base_annual_days: 21,
+  opening_recoveries: 0,
+  alloc_y2: 0,
+  alloc_y1: 0,
+  alloc_y: 0,
+}
 
 export default function EmployeesTab() {
   const [employees, setEmployees] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
+  const [allocationsByEmployee, setAllocationsByEmployee] = useState({})
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState(null)
@@ -19,28 +35,41 @@ export default function EmployeesTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data: emps }, { data: depts }, { data: pos }] = await Promise.all([
+    const [{ data: emps }, { data: depts }, { data: pos }, { data: allocations }] = await Promise.all([
       supabase
         .from('employees')
         .select('*, department:departments(id, name), position:positions(id, name)')
         .order('full_name'),
       supabase.from('departments').select('*').order('name'),
       supabase.from('positions').select('*').order('name'),
+      supabase.from('year_allocations').select('*'),
     ])
     setEmployees(emps || [])
     setDepartments(depts || [])
     setPositions(pos || [])
+
+    const map = {}
+    ;(allocations || []).forEach((a) => {
+      if (!map[a.employee_id]) map[a.employee_id] = {}
+      map[a.employee_id][a.year] = a.days
+    })
+    setAllocationsByEmployee(map)
     setLoading(false)
   }
 
   function startEdit(emp) {
     setEditingId(emp.id)
+    const allocs = allocationsByEmployee[emp.id] || {}
     setForm({
       full_name: emp.full_name,
       email: emp.email || '',
       department_id: emp.department_id || '',
       position_id: emp.position_id || '',
       base_annual_days: emp.base_annual_days,
+      opening_recoveries: emp.opening_recoveries || 0,
+      alloc_y2: allocs[YEAR_Y2] ?? 0,
+      alloc_y1: allocs[YEAR_Y1] ?? 0,
+      alloc_y: allocs[YEAR_Y] ?? 0,
     })
   }
 
@@ -61,16 +90,41 @@ export default function EmployeesTab() {
       department_id: form.department_id || null,
       position_id: form.position_id || null,
       base_annual_days: Number(form.base_annual_days) || 0,
+      opening_recoveries: Number(form.opening_recoveries) || 0,
     }
 
-    const { error } = editingId
-      ? await supabase.from('employees').update(payload).eq('id', editingId)
-      : await supabase.from('employees').insert(payload)
+    let employeeId = editingId
 
-    if (error) {
-      setError('Nu am putut salva. Verifică dacă emailul e deja folosit.')
-      return
+    if (editingId) {
+      const { error } = await supabase.from('employees').update(payload).eq('id', editingId)
+      if (error) {
+        setError('Nu am putut salva. Verifică dacă emailul e deja folosit.')
+        return
+      }
+    } else {
+      const { data, error } = await supabase.from('employees').insert(payload).select('id').single()
+      if (error) {
+        setError('Nu am putut salva. Verifică dacă emailul e deja folosit.')
+        return
+      }
+      employeeId = data.id
     }
+
+    // scrie alocările pe cei 3 ani urmăriți acum (an real, nu relativ)
+    await Promise.all(
+      [
+        [YEAR_Y2, form.alloc_y2],
+        [YEAR_Y1, form.alloc_y1],
+        [YEAR_Y, form.alloc_y],
+      ].map(([year, days]) =>
+        supabase
+          .from('year_allocations')
+          .upsert(
+            { employee_id: employeeId, year, days: Number(days) || 0 },
+            { onConflict: 'employee_id,year' }
+          )
+      )
+    )
 
     cancelEdit()
     load()
@@ -123,7 +177,7 @@ export default function EmployeesTab() {
           </select>
           {departments.length === 0 && (
             <p className="mt-1 text-xs text-amber-600">
-              Nu ai niciun departament definit — adaugă din tab-ul "Setări".
+              Nu ai niciun departament definit — adaugă din secțiunea de mai jos.
             </p>
           )}
         </div>
@@ -143,7 +197,7 @@ export default function EmployeesTab() {
           </select>
           {positions.length === 0 && (
             <p className="mt-1 text-xs text-amber-600">
-              Nu ai nicio funcție definită — adaugă din tab-ul "Setări".
+              Nu ai nicio funcție definită — adaugă din secțiunea de mai jos.
             </p>
           )}
         </div>
@@ -156,6 +210,65 @@ export default function EmployeesTab() {
             onChange={(e) => setForm({ ...form, base_annual_days: e.target.value })}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
           />
+          <p className="mt-1 text-xs text-slate-400">
+            Alocarea implicită folosită automat pentru un an care nu are încă un număr explicit
+            mai jos — de-asta un an nou (1 ianuarie) capătă automat această alocare, fără nicio
+            intervenție din partea ta.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+          <p className="text-xs font-semibold text-brand-800">Sold pe fiecare an (situația actuală)</p>
+          <p className="mt-0.5 text-xs text-brand-700">
+            Completează cu numerele exacte din Excel-ul actual, pentru fiecare an în parte.
+            Aplicația scade automat din ele pe măsură ce aprobi cereri noi.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Recuperări</label>
+              <input
+                type="number"
+                step="0.5"
+                value={form.opening_recoveries}
+                onChange={(e) => setForm({ ...form, opening_recoveries: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Anul {YEAR_Y2} <span className="text-slate-400">(expiră 30 iun. {CURRENT_YEAR})</span>
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                value={form.alloc_y2}
+                onChange={(e) => setForm({ ...form, alloc_y2: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Anul {YEAR_Y1}</label>
+              <input
+                type="number"
+                step="0.5"
+                value={form.alloc_y1}
+                onChange={(e) => setForm({ ...form, alloc_y1: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Anul {YEAR_Y} <span className="text-slate-400">(curent)</span>
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                value={form.alloc_y}
+                onChange={(e) => setForm({ ...form, alloc_y: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+          </div>
         </div>
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex gap-2 pt-1">

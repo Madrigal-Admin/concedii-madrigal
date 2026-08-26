@@ -29,19 +29,34 @@ function june30(year) {
   return new Date(year, 5, 30, 23, 59, 59)
 }
 
+// Alocarea pentru un an calendaristic REAL. Dacă există un rând explicit în
+// year_allocations pentru acel an, îl folosește; altfel presupune alocarea
+// de bază a angajatului — exact mecanismul care face ca un an nou să capete
+// automat, pe 1 ianuarie, o alocare implicită, fără nicio intervenție manuală.
+function allocationForYear(yearAllocations, employee, year) {
+  const row = (yearAllocations || []).find((a) => a.year === year)
+  if (row) return Number(row.days) || 0
+  return Number(employee.base_annual_days) || 0
+}
+
+function usedForYear(approvedRequests, year) {
+  return approvedRequests.reduce((s, r) => s + Number((r.deduction && r.deduction[String(year)]) || 0), 0)
+}
+
 /**
- * Calculează soldul unui angajat, defalcat pe categorii, pe baza distribuției
- * REALE salvate la fiecare cerere aprobată (coloanele deducted_recoveries,
- * deducted_y2, deducted_y1, deducted_y). Distribuția e stabilită automat la
- * momentul aprobării (vezi computeDefaultSplit) și poate fi corectată manual
- * de un Admin din pagina Aprobări.
+ * Calculează soldul unui angajat, defalcat pe categorii, ancorat de ANI
+ * CALENDARISTICI REALI — nu relativ la "azi". Asta face ca:
+ *  - pe 1 ianuarie, anul curent să treacă automat mai departe
+ *  - pe 30 iunie, zilele din urmă cu 2 ani să expire automat
+ * fără nicio acțiune manuală.
  *
- * @param {object} employee - rândul din tabela employees (are base_annual_days)
- * @param {array} approvedRequests - cererile APROBATE ale angajatului
+ * @param {object} employee - rândul din tabela employees (are base_annual_days, opening_recoveries)
+ * @param {array} approvedRequests - cererile APROBATE ale angajatului (cu coloana "deduction")
  * @param {array} recoveries - rândurile din overtime_recoveries ale angajatului
+ * @param {array} yearAllocations - rândurile din year_allocations ale angajatului
  * @param {Date} asOf - data de referință (implicit azi)
  */
-export function calculateBalance(employee, approvedRequests, recoveries, asOf = new Date()) {
+export function calculateBalance(employee, approvedRequests, recoveries, yearAllocations, asOf = new Date()) {
   const currentYear = asOf.getFullYear()
   const yearY = currentYear
   const yearY1 = currentYear - 1
@@ -49,22 +64,22 @@ export function calculateBalance(employee, approvedRequests, recoveries, asOf = 
 
   const y2Expired = asOf > june30(currentYear)
 
-  // Total de zile alocate în fiecare "găleată". Presupunem aceeași alocare
-  // anuală de bază pentru toți cei 3 ani — dacă vrei alocări diferite per an,
-  // poți extinde tabela employees cu coloane separate mai târziu.
-  const base = Number(employee.base_annual_days) || 0
+  const openingRecoveries = Number(employee.opening_recoveries) || 0
+  const totalRecoveriesEarned = openingRecoveries + recoveries.reduce((s, r) => s + Number(r.days || 0), 0)
+  const usedRecoveries = approvedRequests.reduce((s, r) => s + Number((r.deduction && r.deduction.recoveries) || 0), 0)
 
-  const totalRecoveriesEarned = recoveries.reduce((s, r) => s + Number(r.days || 0), 0)
+  const usedY2 = usedForYear(approvedRequests, yearY2)
+  const usedY1 = usedForYear(approvedRequests, yearY1)
+  const usedY = usedForYear(approvedRequests, yearY)
 
-  const usedRecoveries = sumField(approvedRequests, 'deducted_recoveries')
-  const usedY2 = sumField(approvedRequests, 'deducted_y2')
-  const usedY1 = sumField(approvedRequests, 'deducted_y1')
-  const usedY = sumField(approvedRequests, 'deducted_y')
+  const allocY2 = allocationForYear(yearAllocations, employee, yearY2)
+  const allocY1 = allocationForYear(yearAllocations, employee, yearY1)
+  const allocY = allocationForYear(yearAllocations, employee, yearY)
 
   const poolRecoveries = totalRecoveriesEarned - usedRecoveries
-  const poolY2 = (y2Expired ? 0 : base) - usedY2
-  const poolY1 = base - usedY1
-  const poolY = base - usedY
+  const poolY2 = (y2Expired ? 0 : allocY2) - usedY2
+  const poolY1 = allocY1 - usedY1
+  const poolY = allocY - usedY
 
   const total = poolRecoveries + poolY2 + poolY1 + poolY
   const totalUsed = usedRecoveries + usedY2 + usedY1 + usedY
@@ -84,16 +99,13 @@ export function calculateBalance(employee, approvedRequests, recoveries, asOf = 
   }
 }
 
-function sumField(rows, field) {
-  return rows.reduce((sum, r) => sum + Number(r[field] || 0), 0)
-}
-
 /**
  * Determină automat distribuția de zile la APROBAREA unei cereri, aplicând
  * ordinea strictă cerută: 1) Recuperări, 2) Y-2 (dacă nu a expirat),
  * 3) Y-1, 4) Y (poate deveni negativ). "pools" trebuie să conțină soldul
- * RĂMAS înainte de această cerere (adică balance.recoveries / y2 / y1 / y
- * calculate din cererile deja aprobate anterior).
+ * RĂMAS înainte de această cerere (rezultatul lui calculateBalance).
+ * Întoarce valorile pe categorii relative — apelantul le leagă de anii
+ * reali (pools.yearY2 / pools.yearY1 / pools.year) când le salvează.
  */
 export function computeDefaultSplit(workingDaysToDeduct, pools) {
   let remaining = Number(workingDaysToDeduct) || 0
@@ -111,6 +123,16 @@ export function computeDefaultSplit(workingDaysToDeduct, pools) {
   const y = round1(remaining) // ce mai rămâne merge pe anul curent, chiar și negativ ca sold rezultat
 
   return { recoveries, y2, y1, y }
+}
+
+/** Construiește obiectul "deduction" (jsonb) pornind de la un split relativ + anii reali. */
+export function splitToDeduction(split, pools) {
+  return {
+    recoveries: split.recoveries || 0,
+    [String(pools.yearY2)]: split.y2 || 0,
+    [String(pools.yearY1)]: split.y1 || 0,
+    [String(pools.year)]: split.y || 0,
+  }
 }
 
 function round1(n) {

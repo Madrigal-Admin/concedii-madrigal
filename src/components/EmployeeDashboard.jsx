@@ -5,6 +5,7 @@ import { calculateBalance, formatDate, STATUS_LABELS, STATUS_STYLES } from '../l
 export default function EmployeeDashboard({ employee }) {
   const [requests, setRequests] = useState([])
   const [recoveries, setRecoveries] = useState([])
+  const [yearAllocations, setYearAllocations] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,23 +14,25 @@ export default function EmployeeDashboard({ employee }) {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: reqs }, { data: recs }] = await Promise.all([
+    const [{ data: reqs }, { data: recs }, { data: allocations }] = await Promise.all([
       supabase
         .from('leave_requests')
         .select('*')
         .eq('employee_id', employee.id)
         .order('created_at', { ascending: false }),
       supabase.from('overtime_recoveries').select('*').eq('employee_id', employee.id),
+      supabase.from('year_allocations').select('*').eq('employee_id', employee.id),
     ])
     setRequests(reqs || [])
     setRecoveries(recs || [])
+    setYearAllocations(allocations || [])
     setLoading(false)
   }
 
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   const approved = requests.filter((r) => r.status === 'approved')
-  const balance = calculateBalance(employee, approved, recoveries)
+  const balance = calculateBalance(employee, approved, recoveries, yearAllocations)
 
   const cards = [
     { label: 'Recuperări', value: balance.recoveries, sub: 'ore suplimentare' },

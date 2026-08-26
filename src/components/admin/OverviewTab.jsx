@@ -5,6 +5,7 @@ import { calculateBalance } from '../../lib/leaveCalculations'
 export default function OverviewTab() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [years, setYears] = useState({ y2: '', y1: '', y: '' })
 
   useEffect(() => {
     load()
@@ -12,22 +13,32 @@ export default function OverviewTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data: employees }, { data: requests }, { data: recoveries }] = await Promise.all([
-      supabase
-        .from('employees')
-        .select('*, department:departments(name), position:positions(name)')
-        .order('full_name'),
-      supabase.from('leave_requests').select('*').eq('status', 'approved'),
-      supabase.from('overtime_recoveries').select('*'),
-    ])
+    const [{ data: employees }, { data: requests }, { data: recoveries }, { data: allocations }] =
+      await Promise.all([
+        supabase
+          .from('employees')
+          .select('*, department:departments(name), position:positions(name)')
+          .order('full_name'),
+        supabase.from('leave_requests').select('*').eq('status', 'approved'),
+        supabase.from('overtime_recoveries').select('*'),
+        supabase.from('year_allocations').select('*'),
+      ])
 
     const computed = (employees || []).map((emp) => {
       const empRequests = (requests || []).filter((r) => r.employee_id === emp.id)
       const empRecoveries = (recoveries || []).filter((r) => r.employee_id === emp.id)
-      const balance = calculateBalance(emp, empRequests, empRecoveries)
+      const empAllocations = (allocations || []).filter((a) => a.employee_id === emp.id)
+      const balance = calculateBalance(emp, empRequests, empRecoveries, empAllocations)
       return { emp, balance }
     })
     setRows(computed)
+    if (computed.length > 0) {
+      const b = computed[0].balance
+      setYears({ y2: b.yearY2, y1: b.yearY1, y: b.year })
+    } else {
+      const now = new Date()
+      setYears({ y2: now.getFullYear() - 2, y1: now.getFullYear() - 1, y: now.getFullYear() })
+    }
     setLoading(false)
   }
 
@@ -42,9 +53,9 @@ export default function OverviewTab() {
               <th className="px-4 py-3">Departament</th>
               <th className="px-4 py-3">Funcție</th>
               <th className="px-4 py-3 text-right">Recuperări</th>
-              <th className="px-4 py-3 text-right">Expiră 30 iun.</th>
-              <th className="px-4 py-3 text-right">Anul trecut</th>
-              <th className="px-4 py-3 text-right">Anul curent</th>
+              <th className="px-4 py-3 text-right">{years.y2} (expiră 30 iun.)</th>
+              <th className="px-4 py-3 text-right">{years.y1}</th>
+              <th className="px-4 py-3 text-right">{years.y} (curent)</th>
               <th className="px-4 py-3 text-right">Total sold</th>
               <th className="px-4 py-3 text-right">Zile folosite</th>
             </tr>

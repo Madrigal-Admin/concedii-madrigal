@@ -82,7 +82,18 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — funcții noi adăugate ulterior
+## Actualizare — an calendaristic real (funcție nouă)
+
+Cea mai recentă actualizare leagă soldurile de **ani calendaristici reali** (2024, 2025, 2026
+etc.) în loc de etichete relative ("acum 2 ani"). Practic, de acum aplicația:
+
+- pe **1 ianuarie**, trece automat la anul nou, fără nicio acțiune din partea ta
+- pe **30 iunie**, expiră automat zilele din urmă cu 2 ani
+
+Rulează o singură dată **`migration_4_calendar_year_balances.sql`** în Supabase → SQL Editor
+(preia automat tot ce ai completat deja la soldul inițial), apoi re-urcă fișierele pe GitHub.
+
+## Actualizări anterioare
 
 Dacă ai instalat deja aplicația și ai primit o versiune nouă de la mine cu îmbunătățiri
 (ex. departamente/funcții din listă, raport exportabil, distribuția editabilă a zilelor

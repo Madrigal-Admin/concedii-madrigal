@@ -5,8 +5,15 @@ import {
   formatDate,
   calculateBalance,
   computeDefaultSplit,
+  splitToDeduction,
   TYPES_THAT_DEDUCT_BALANCE,
 } from '../../lib/leaveCalculations'
+
+const now = new Date()
+const CURRENT_YEAR = now.getFullYear()
+const YEAR_Y2 = CURRENT_YEAR - 2
+const YEAR_Y1 = CURRENT_YEAR - 1
+const YEAR_Y = CURRENT_YEAR
 
 export default function ApprovalsTab() {
   const [requests, setRequests] = useState([])
@@ -33,23 +40,26 @@ export default function ApprovalsTab() {
   async function approve(request) {
     setBusyId(request.id)
 
-    let split = { recoveries: 0, y2: 0, y1: 0, y: 0 }
+    let deduction = {}
 
     if (TYPES_THAT_DEDUCT_BALANCE.includes(request.leave_type)) {
-      const [{ data: employee }, { data: otherApproved }, { data: recoveries }] = await Promise.all([
-        supabase.from('employees').select('*').eq('id', request.employee_id).maybeSingle(),
-        supabase
-          .from('leave_requests')
-          .select('*')
-          .eq('employee_id', request.employee_id)
-          .eq('status', 'approved')
-          .neq('id', request.id),
-        supabase.from('overtime_recoveries').select('*').eq('employee_id', request.employee_id),
-      ])
+      const [{ data: employee }, { data: otherApproved }, { data: recoveries }, { data: yearAllocations }] =
+        await Promise.all([
+          supabase.from('employees').select('*').eq('id', request.employee_id).maybeSingle(),
+          supabase
+            .from('leave_requests')
+            .select('*')
+            .eq('employee_id', request.employee_id)
+            .eq('status', 'approved')
+            .neq('id', request.id),
+          supabase.from('overtime_recoveries').select('*').eq('employee_id', request.employee_id),
+          supabase.from('year_allocations').select('*').eq('employee_id', request.employee_id),
+        ])
 
       if (employee) {
-        const pools = calculateBalance(employee, otherApproved || [], recoveries || [])
-        split = computeDefaultSplit(request.working_days, pools)
+        const pools = calculateBalance(employee, otherApproved || [], recoveries || [], yearAllocations || [])
+        const split = computeDefaultSplit(request.working_days, pools)
+        deduction = splitToDeduction(split, pools)
       }
     }
 
@@ -58,10 +68,7 @@ export default function ApprovalsTab() {
       .update({
         status: 'approved',
         reviewed_at: new Date().toISOString(),
-        deducted_recoveries: split.recoveries,
-        deducted_y2: split.y2,
-        deducted_y1: split.y1,
-        deducted_y: split.y,
+        deduction,
       })
       .eq('id', request.id)
 
@@ -82,11 +89,12 @@ export default function ApprovalsTab() {
   function startEdit(r) {
     setEditingId(r.id)
     setEditError('')
+    const d = r.deduction || {}
     setEditForm({
-      recoveries: r.deducted_recoveries || 0,
-      y2: r.deducted_y2 || 0,
-      y1: r.deducted_y1 || 0,
-      y: r.deducted_y || 0,
+      recoveries: d.recoveries || 0,
+      y2: d[String(YEAR_Y2)] || 0,
+      y1: d[String(YEAR_Y1)] || 0,
+      y: d[String(YEAR_Y)] || 0,
     })
   }
 
@@ -111,10 +119,12 @@ export default function ApprovalsTab() {
     await supabase
       .from('leave_requests')
       .update({
-        deducted_recoveries: Number(editForm.recoveries) || 0,
-        deducted_y2: Number(editForm.y2) || 0,
-        deducted_y1: Number(editForm.y1) || 0,
-        deducted_y: Number(editForm.y) || 0,
+        deduction: {
+          recoveries: Number(editForm.recoveries) || 0,
+          [String(YEAR_Y2)]: Number(editForm.y2) || 0,
+          [String(YEAR_Y1)]: Number(editForm.y1) || 0,
+          [String(YEAR_Y)]: Number(editForm.y) || 0,
+        },
       })
       .eq('id', r.id)
     await load()
@@ -178,6 +188,9 @@ export default function ApprovalsTab() {
           {rest.map((r) => {
             const isApproved = r.status === 'approved'
             const isEditing = editingId === r.id
+            const d = r.deduction || {}
+            const badgeEntries = Object.entries(d).filter(([, v]) => Number(v) !== 0)
+
             return (
               <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -199,18 +212,19 @@ export default function ApprovalsTab() {
 
                 {isApproved && !isEditing && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      Recuperări: {r.deducted_recoveries || 0}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      Acum 2 ani: {r.deducted_y2 || 0}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      Anul trecut: {r.deducted_y1 || 0}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      Anul curent: {r.deducted_y || 0}
-                    </span>
+                    {badgeEntries.length === 0 && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                        Nu scade din sold
+                      </span>
+                    )}
+                    {badgeEntries.map(([key, value]) => (
+                      <span
+                        key={key}
+                        className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                      >
+                        {key === 'recoveries' ? 'Recuperări' : `Anul ${key}`}: {value}
+                      </span>
+                    ))}
                     <button
                       onClick={() => startEdit(r)}
                       className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-brand-600 hover:bg-brand-50 focus-ring"
@@ -228,9 +242,9 @@ export default function ApprovalsTab() {
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {[
                         ['recoveries', 'Recuperări'],
-                        ['y2', 'Acum 2 ani'],
-                        ['y1', 'Anul trecut'],
-                        ['y', 'Anul curent'],
+                        ['y2', `Anul ${YEAR_Y2}`],
+                        ['y1', `Anul ${YEAR_Y1}`],
+                        ['y', `Anul ${YEAR_Y} (curent)`],
                       ].map(([key, label]) => (
                         <div key={key}>
                           <label className="mb-1 block text-[11px] font-medium text-slate-600">
