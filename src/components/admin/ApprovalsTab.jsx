@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Check, X, Pencil, Save, X as XIcon } from 'lucide-react'
+import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import {
   formatDate,
   calculateBalance,
   computeDefaultSplit,
   splitToDeduction,
+  countLeaveDays,
   TYPES_THAT_DEDUCT_BALANCE,
+  LEAVE_TYPES,
 } from '../../lib/leaveCalculations'
 
 const now = new Date()
@@ -139,6 +141,8 @@ export default function ApprovalsTab() {
 
   return (
     <div className="space-y-8">
+      <CreateRequestForm onCreated={load} />
+
       <section>
         <h3 className="mb-3 font-display text-lg font-semibold text-ink">
           În așteptare ({pending.length})
@@ -159,6 +163,13 @@ export default function ApprovalsTab() {
                 <p className="mt-0.5 text-xs text-slate-400">
                   Cerere trimisă pe {formatDate(r.created_at)}
                 </p>
+                {r.leave_type === 'Medical' && (r.medical_series_number || r.medical_code) && (
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {r.medical_series_number && `Serie și număr: ${r.medical_series_number}`}
+                    {r.medical_series_number && r.medical_code && ' · '}
+                    {r.medical_code && `Cod indemnizație: ${r.medical_code}`}
+                  </p>
+                )}
                 {r.reason && <p className="mt-1 text-xs italic text-slate-400">„{r.reason}”</p>}
               </div>
               <div className="flex gap-2">
@@ -209,6 +220,14 @@ export default function ApprovalsTab() {
                 <p className="mt-0.5 text-xs text-slate-400">
                   Cerere trimisă pe {formatDate(r.created_at)}
                 </p>
+                {r.leave_type === 'Medical' && (r.medical_series_number || r.medical_code) && (
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {r.medical_series_number && `Serie și număr: ${r.medical_series_number}`}
+                    {r.medical_series_number && r.medical_code && ' · '}
+                    {r.medical_code && `Cod indemnizație: ${r.medical_code}`}
+                  </p>
+                )}
+                {r.reason && <p className="mt-1 text-xs italic text-slate-400">„{r.reason}”</p>}
 
                 {isApproved && !isEditing && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -283,6 +302,208 @@ export default function ApprovalsTab() {
           })}
         </div>
       </section>
+    </div>
+  )
+}
+
+function CreateRequestForm({ onCreated }) {
+  const [open, setOpen] = useState(false)
+  const [employees, setEmployees] = useState([])
+  const [legalHolidays, setLegalHolidays] = useState([])
+  const [employeeId, setEmployeeId] = useState('')
+  const [leaveType, setLeaveType] = useState(LEAVE_TYPES[0])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [reason, setReason] = useState('')
+  const [medicalSeriesNumber, setMedicalSeriesNumber] = useState('')
+  const [medicalCode, setMedicalCode] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('employees')
+      .select('id, full_name')
+      .order('full_name')
+      .then(({ data }) => setEmployees(data || []))
+    supabase
+      .from('legal_holidays')
+      .select('*')
+      .then(({ data }) => setLegalHolidays(data || []))
+  }, [open])
+
+  const leaveDays = countLeaveDays(leaveType, startDate, endDate, legalHolidays)
+
+  function resetForm() {
+    setEmployeeId('')
+    setLeaveType(LEAVE_TYPES[0])
+    setStartDate('')
+    setEndDate('')
+    setReason('')
+    setMedicalSeriesNumber('')
+    setMedicalCode('')
+    setError('')
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (!employeeId) return setError('Alege angajatul.')
+    if (!startDate || !endDate) return setError('Completează perioada.')
+    if (new Date(endDate) < new Date(startDate)) return setError('Perioada e invalidă.')
+    if (leaveDays === 0) return setError('Perioada selectată nu conține nicio zi de concediu.')
+
+    setSaving(true)
+    const employee = employees.find((e) => e.id === employeeId)
+
+    const { error } = await supabase.from('leave_requests').insert({
+      employee_id: employeeId,
+      employee_name: employee?.full_name || '',
+      leave_type: leaveType,
+      start_date: startDate,
+      end_date: endDate,
+      working_days: leaveDays,
+      reason: reason || null,
+      status: 'pending',
+      medical_series_number: leaveType === 'Medical' ? medicalSeriesNumber || null : null,
+      medical_code: leaveType === 'Medical' ? medicalCode || null : null,
+    })
+
+    setSaving(false)
+    if (error) {
+      setError('Nu am putut salva cererea.')
+      return
+    }
+
+    resetForm()
+    setOpen(false)
+    onCreated()
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-ink focus-ring"
+      >
+        <span className="flex items-center gap-1.5">
+          <Plus size={15} /> Adaugă cerere nouă
+        </span>
+        <ChevronDown size={16} className={`text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="space-y-3 border-t border-slate-200 p-4">
+          <p className="text-xs text-slate-500">
+            Folosește acest formular pentru cereri introduse direct de tine — de exemplu concedii
+            medicale, care nu pot fi trimise de angajați prin formularul public.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Angajat</label>
+              <select
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              >
+                <option value="">Selectează…</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Tip concediu</label>
+              <select
+                value={leaveType}
+                onChange={(e) => setLeaveType(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              >
+                {LEAVE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Data început</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Data sfârșit</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+          </div>
+
+          {startDate && endDate && (
+            <p className="text-xs text-slate-600">
+              Zile calculate ({leaveType === 'Medical' ? 'calendaristice' : 'lucrătoare'}):{' '}
+              <span className="font-semibold text-ink">{leaveDays}</span>
+            </p>
+          )}
+
+          {leaveType === 'Medical' && (
+            <div className="grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Serie și număr</label>
+                <input
+                  value={medicalSeriesNumber}
+                  onChange={(e) => setMedicalSeriesNumber(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Cod indemnizație</label>
+                <input
+                  value={medicalCode}
+                  onChange={(e) => setMedicalCode(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              Motiv <span className="text-slate-400">(opțional)</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            />
+          </div>
+
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 focus-ring"
+          >
+            <Plus size={14} /> {saving ? 'Se salvează…' : 'Creează cererea (În așteptare)'}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

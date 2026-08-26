@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../supabaseClient'
-import { countWorkingDays, LEAVE_TYPES } from '../lib/leaveCalculations'
+import { countLeaveDays, PUBLIC_LEAVE_TYPES } from '../lib/leaveCalculations'
 
 export default function PublicRequestForm() {
   const [employees, setEmployees] = useState([])
+  const [legalHolidays, setLegalHolidays] = useState([])
   const [employeeId, setEmployeeId] = useState('')
-  const [leaveType, setLeaveType] = useState(LEAVE_TYPES[0])
+  const [leaveType, setLeaveType] = useState(PUBLIC_LEAVE_TYPES[0])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [reason, setReason] = useState('')
@@ -15,6 +16,7 @@ export default function PublicRequestForm() {
 
   useEffect(() => {
     loadEmployees()
+    loadLegalHolidays()
   }, [])
 
   async function loadEmployees() {
@@ -25,7 +27,12 @@ export default function PublicRequestForm() {
     if (!error) setEmployees(data || [])
   }
 
-  const workingDays = countWorkingDays(startDate, endDate)
+  async function loadLegalHolidays() {
+    const { data, error } = await supabase.from('legal_holidays').select('*')
+    if (!error) setLegalHolidays(data || [])
+  }
+
+  const leaveDays = countLeaveDays(leaveType, startDate, endDate, legalHolidays)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -35,8 +42,7 @@ export default function PublicRequestForm() {
     if (!startDate || !endDate) return setErrorMsg('Completează data de început și de sfârșit.')
     if (new Date(endDate) < new Date(startDate))
       return setErrorMsg('Data de sfârșit nu poate fi înainte de data de început.')
-    if (workingDays === 0)
-      return setErrorMsg('Perioada selectată nu conține nicio zi lucrătoare.')
+    if (leaveDays === 0) return setErrorMsg('Perioada selectată nu conține nicio zi de concediu.')
 
     setStatus('sending')
     const employee = employees.find((e) => e.id === employeeId)
@@ -47,7 +53,7 @@ export default function PublicRequestForm() {
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
-      working_days: workingDays,
+      working_days: leaveDays,
       reason: reason || null,
       status: 'pending',
     })
@@ -90,6 +96,9 @@ export default function PublicRequestForm() {
       <p className="mt-1 text-sm text-slate-500">
         Fără cont necesar — selectează-ți numele și completează perioada dorită.
       </p>
+      <p className="mt-1 text-xs text-slate-400">
+        Pentru concediu medical, te rugăm să contactezi direct HR.
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div>
@@ -120,7 +129,7 @@ export default function PublicRequestForm() {
             onChange={(e) => setLeaveType(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
           >
-            {LEAVE_TYPES.map((t) => (
+            {PUBLIC_LEAVE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
@@ -151,7 +160,7 @@ export default function PublicRequestForm() {
 
         {startDate && endDate && (
           <p className="text-sm text-slate-600">
-            Zile lucrătoare calculate: <span className="font-semibold text-ink">{workingDays}</span>
+            Zile de concediu calculate: <span className="font-semibold text-ink">{leaveDays}</span>
           </p>
         )}
 

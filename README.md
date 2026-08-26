@@ -82,7 +82,32 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — an calendaristic real (funcție nouă)
+## Actualizare — zile libere legale, concediu medical restricționat, calcule pe tipuri
+
+Cea mai recentă actualizare aduce mai multe schimbări legate:
+
+- Angajații nu mai pot alege "Medical" din formularul public — doar Adminul poate introduce
+  concedii medicale, dintr-un formular nou "Adaugă cerere nouă" (în tab-ul Aprobări), care
+  cere și Serie și număr / Cod indemnizație.
+- Concediile medicale se calculează acum în **zile calendaristice** (inclusiv weekend),
+  indiferent de situație.
+- Concediile de odihnă exclud automat **zilele libere legale** din cursul săptămânii — pe
+  care le introduci manual, o dată pe an, din tab-ul **Setări → Zile libere legale**.
+- Tab-ul **Recuperări** arată acum o situație agregată (nume, departament, funcție,
+  recuperări), cu căutare și export Excel, în loc de lista brută de înregistrări (istoricul
+  detaliat rămâne disponibil printr-un link discret, pentru corecturi).
+- Tab-ul **Rapoarte** are acum și filtru după tipul de concediu.
+- Motivul cererii ("Motiv") rămâne vizibil și după ce cererea e aprobată/respinsă, nu doar cât
+  e "În așteptare".
+
+Rulează o singură dată **`migration_5_holidays_medical_fields.sql`** în Supabase → SQL Editor,
+apoi re-urcă fișierele pe GitHub. După aceea, intră în **Setări → Zile libere legale** și
+introdu sărbătorile legale ale anului curent, ca excluderea din calculul concediilor de odihnă
+să funcționeze corect.
+
+
+
+## Actualizare — an calendaristic real
 
 Cea mai recentă actualizare leagă soldurile de **ani calendaristici reali** (2024, 2025, 2026
 etc.) în loc de etichete relative ("acum 2 ani"). Practic, de acum aplicația:

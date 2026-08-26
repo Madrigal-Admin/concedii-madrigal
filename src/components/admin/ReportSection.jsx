@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Download, Printer, ListChecks } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
-import { formatDate, STATUS_LABELS } from '../../lib/leaveCalculations'
+import { formatDate, STATUS_LABELS, LEAVE_TYPES } from '../../lib/leaveCalculations'
 import EmployeeMultiSelect from './EmployeeMultiSelect'
 
 export default function ReportSection() {
@@ -13,6 +13,7 @@ export default function ReportSection() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [selectedIds, setSelectedIds] = useState(new Set()) // gol = toți angajații
+  const [leaveType, setLeaveType] = useState('')
 
   useEffect(() => {
     load()
@@ -56,9 +57,10 @@ export default function ReportSection() {
       if (selectedIds.size > 0 && !selectedIds.has(r.employee_id)) return false
       if (startDate && r.end_date < startDate) return false
       if (endDate && r.start_date > endDate) return false
+      if (leaveType && r.leave_type !== leaveType) return false
       return true
     })
-  }, [requests, selectedIds, startDate, endDate])
+  }, [requests, selectedIds, startDate, endDate, leaveType])
 
   function rowsForExport() {
     return filtered.map((r) => {
@@ -186,14 +188,31 @@ export default function ReportSection() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Angajați</label>
-          <EmployeeMultiSelect
-            employees={employees}
-            selectedIds={selectedIds}
-            onToggle={toggleEmployee}
-            onToggleAll={toggleAll}
-          />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Angajați</label>
+            <EmployeeMultiSelect
+              employees={employees}
+              selectedIds={selectedIds}
+              onToggle={toggleEmployee}
+              onToggleAll={toggleAll}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Tip concediu</label>
+            <select
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            >
+              <option value="">Toate tipurile</option>
+              {LEAVE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">

@@ -3,6 +3,11 @@
 
 export const LEAVE_TYPES = ['Odihnă', 'Medical', 'Fără Plată', 'Evenimente Speciale']
 
+// Angajații, din formularul public, nu pot alege "Medical" — doar Adminul
+// poate introduce concedii medicale (are nevoie de Serie și număr / Cod
+// indemnizație, câmpuri suplimentare disponibile doar în Panoul Admin).
+export const PUBLIC_LEAVE_TYPES = LEAVE_TYPES.filter((t) => t !== 'Medical')
+
 // Doar aceste tipuri de concediu scad din soldul de zile de odihnă.
 // Medical și Fără Plată sunt informative, nu consumă soldul.
 export const TYPES_THAT_DEDUCT_BALANCE = ['Odihnă', 'Evenimente Speciale']
@@ -18,6 +23,55 @@ export function countWorkingDays(startDate, endDate) {
   while (cur <= end) {
     const day = cur.getDay() // 0 = duminică, 6 = sâmbătă
     if (day !== 0 && day !== 6) count++
+    cur.setDate(cur.getDate() + 1)
+  }
+  return count
+}
+
+// Calculează numărul de zile CALENDARISTICE (toate, inclusiv weekend) dintre
+// două date, inclusiv — folosit pentru concediul medical.
+export function countCalendarDays(startDate, endDate) {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  if (isNaN(start) || isNaN(end) || end < start) return 0
+  return Math.round((end - start) / 86400000) + 1
+}
+
+function isSameOrBetween(date, start, end) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  return d >= start && d <= end
+}
+
+function isLegalHoliday(date, legalHolidays) {
+  return (legalHolidays || []).some((h) => {
+    const start = new Date(h.start_date)
+    const end = new Date(h.end_date)
+    return isSameOrBetween(date, start, end)
+  })
+}
+
+/**
+ * Calculează numărul de zile care se scad dintr-o cerere de concediu,
+ * ținând cont de tipul de concediu:
+ *  - Medical: zile CALENDARISTICE, indiferent de weekend sau zile libere legale
+ *  - Odihnă: zile lucrătoare, excluzând weekendurile ȘI zilele libere legale
+ *    care cad în cursul săptămânii
+ *  - Fără Plată / Evenimente Speciale: zile lucrătoare, excluzând doar weekendurile
+ */
+export function countLeaveDays(leaveType, startDate, endDate, legalHolidays = []) {
+  if (leaveType === 'Medical') return countCalendarDays(startDate, endDate)
+
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  if (isNaN(start) || isNaN(end) || end < start) return 0
+
+  let count = 0
+  const cur = new Date(start)
+  while (cur <= end) {
+    const day = cur.getDay()
+    const isWeekend = day === 0 || day === 6
+    const isExcludedHoliday = leaveType === 'Odihnă' && isLegalHoliday(cur, legalHolidays)
+    if (!isWeekend && !isExcludedHoliday) count++
     cur.setDate(cur.getDate() + 1)
   }
   return count
