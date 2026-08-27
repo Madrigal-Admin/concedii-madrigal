@@ -12,6 +12,25 @@ export const PUBLIC_LEAVE_TYPES = LEAVE_TYPES.filter((t) => t !== 'Medical')
 // Medical și Fără Plată sunt informative, nu consumă soldul.
 export const TYPES_THAT_DEDUCT_BALANCE = ['Odihnă', 'Evenimente Speciale']
 
+export const CERTIFICATE_TYPES = [
+  'Adeverință de vechime',
+  'Adeverință de salariu',
+  'Adeverință de salariat',
+  'Fluturaș de salariu',
+]
+
+export const DELIVERY_METHODS = ['Pe mail-ul personal', 'Ridicare de la biroul Resurse Umane']
+
+export const CERTIFICATE_STATUS_LABELS = {
+  pending: 'În așteptare',
+  issued: 'Eliberată',
+}
+
+export const CERTIFICATE_STATUS_STYLES = {
+  pending: 'bg-amber-100 text-amber-800 border-amber-200',
+  issued: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+}
+
 // Calculează numărul de zile lucrătoare (luni-vineri) dintre două date, inclusiv.
 export function countWorkingDays(startDate, endDate) {
   const start = new Date(startDate)

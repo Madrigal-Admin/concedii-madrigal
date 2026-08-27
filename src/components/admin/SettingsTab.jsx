@@ -100,6 +100,15 @@ export default function SettingsTab() {
       </section>
 
       <section>
+        <h3 className="mb-1 font-display text-lg font-semibold text-ink">Zile libere legale</h3>
+        <p className="mb-4 text-sm text-slate-500">
+          Introdu-le manual, o dată pe an. Cele care cad în cursul săptămânii sunt excluse automat
+          din calculul concediilor de odihnă (nu se scad din sold).
+        </p>
+        <LegalHolidaysManager />
+      </section>
+
+      <section>
         <h3 className="mb-1 font-display text-lg font-semibold text-ink">
           Liste prestabilite (departamente și funcții)
         </h3>
@@ -119,15 +128,6 @@ export default function SettingsTab() {
             hint="ex: Corist, Dirijor, Corepetitor, Manager"
           />
         </div>
-      </section>
-
-      <section>
-        <h3 className="mb-1 font-display text-lg font-semibold text-ink">Zile libere legale</h3>
-        <p className="mb-4 text-sm text-slate-500">
-          Introdu-le manual, o dată pe an. Cele care cad în cursul săptămânii sunt excluse automat
-          din calculul concediilor de odihnă (nu se scad din sold).
-        </p>
-        <LegalHolidaysManager />
       </section>
     </div>
   )
@@ -179,8 +179,11 @@ function LegalHolidaysManager() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-      <form onSubmit={handleAdd} className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+    <div>
+      <form
+        onSubmit={handleAdd}
+        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+      >
         <h4 className="text-sm font-semibold text-ink">Adaugă zi liberă / interval</h4>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -224,7 +227,7 @@ function LegalHolidaysManager() {
         </button>
       </form>
 
-      <div>
+      <div className="mx-auto mt-6 max-w-2xl">
         {loading ? (
           <p className="text-sm text-slate-500">Se încarcă…</p>
         ) : (

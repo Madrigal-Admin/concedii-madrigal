@@ -93,8 +93,11 @@ export default function RecoveriesTab() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-      <form onSubmit={handleSubmit} className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+    <div>
+      <form
+        onSubmit={handleSubmit}
+        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+      >
         <h3 className="font-display text-lg font-semibold text-ink">Adaugă recuperare</h3>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Angajat</label>
@@ -141,7 +144,7 @@ export default function RecoveriesTab() {
         </button>
       </form>
 
-      <div>
+      <div className="mx-auto mt-6 max-w-2xl">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-display text-lg font-semibold text-ink">Situația recuperărilor</h3>
           <button
@@ -179,7 +182,7 @@ export default function RecoveriesTab() {
               <tbody>
                 {situation.map(({ emp, recoveries }) => (
                   <tr key={emp.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-2.5 font-medium text-ink">{emp.full_name}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{emp.full_name}</td>
                     <td className="px-4 py-2.5 text-slate-500">{emp.department?.name || '—'}</td>
                     <td className="px-4 py-2.5 text-slate-500">{emp.position?.name || '—'}</td>
                     <td className="px-4 py-2.5 text-right font-semibold">{recoveries}</td>

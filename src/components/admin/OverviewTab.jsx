@@ -63,7 +63,7 @@ export default function OverviewTab() {
           <tbody>
             {rows.map(({ emp, balance }) => (
               <tr key={emp.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium text-ink">{emp.full_name}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{emp.full_name}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.department?.name || '—'}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.position?.name || '—'}</td>
                 <td className="px-4 py-3 text-right">{balance.recoveries}</td>

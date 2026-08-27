@@ -10,6 +10,7 @@ const YEAR_Y = CURRENT_YEAR
 const empty = {
   full_name: '',
   email: '',
+  contract_number: '',
   department_id: '',
   position_id: '',
   base_annual_days: 21,
@@ -63,6 +64,7 @@ export default function EmployeesTab() {
     setForm({
       full_name: emp.full_name,
       email: emp.email || '',
+      contract_number: emp.contract_number || '',
       department_id: emp.department_id || '',
       position_id: emp.position_id || '',
       base_annual_days: emp.base_annual_days,
@@ -83,10 +85,12 @@ export default function EmployeesTab() {
     e.preventDefault()
     setError('')
     if (!form.full_name.trim()) return setError('Numele este obligatoriu.')
+    if (!form.contract_number.trim()) return setError('Numărul contractului este obligatoriu.')
 
     const payload = {
       full_name: form.full_name.trim(),
       email: form.email.trim().toLowerCase() || null,
+      contract_number: form.contract_number.trim(),
       department_id: form.department_id || null,
       position_id: form.position_id || null,
       base_annual_days: Number(form.base_annual_days) || 0,
@@ -137,18 +141,31 @@ export default function EmployeesTab() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-      <form onSubmit={handleSubmit} className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+    <div>
+      <form
+        onSubmit={handleSubmit}
+        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+      >
         <h3 className="font-display text-lg font-semibold text-ink">
           {editingId ? 'Editează angajat' : 'Adaugă angajat nou'}
         </h3>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Nume complet</label>
-          <input
-            value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Nume complet</label>
+            <input
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Număr contract</label>
+            <input
+              value={form.contract_number}
+              onChange={(e) => setForm({ ...form, contract_number: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            />
+          </div>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">
@@ -161,45 +178,43 @@ export default function EmployeesTab() {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Departament</label>
-          <select
-            value={form.department_id}
-            onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          >
-            <option value="">Fără departament</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          {departments.length === 0 && (
-            <p className="mt-1 text-xs text-amber-600">
-              Nu ai niciun departament definit — adaugă din secțiunea de mai jos.
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Funcție</label>
-          <select
-            value={form.position_id}
-            onChange={(e) => setForm({ ...form, position_id: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          >
-            <option value="">Fără funcție</option>
-            {positions.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          {positions.length === 0 && (
-            <p className="mt-1 text-xs text-amber-600">
-              Nu ai nicio funcție definită — adaugă din secțiunea de mai jos.
-            </p>
-          )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Departament</label>
+            <select
+              value={form.department_id}
+              onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            >
+              <option value="">Fără departament</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            {departments.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">Adaugă din secțiunea "Liste prestabilite".</p>
+            )}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Funcție</label>
+            <select
+              value={form.position_id}
+              onChange={(e) => setForm({ ...form, position_id: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            >
+              <option value="">Fără funcție</option>
+              {positions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {positions.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">Adaugă din secțiunea "Liste prestabilite".</p>
+            )}
+          </div>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Zile de bază / an</label>
@@ -291,7 +306,7 @@ export default function EmployeesTab() {
         </div>
       </form>
 
-      <div>
+      <div className="mx-auto mt-6 max-w-2xl">
         <h3 className="mb-3 font-display text-lg font-semibold text-ink">
           Angajați ({employees.length})
         </h3>
@@ -308,7 +323,9 @@ export default function EmployeesTab() {
                   <p className="text-sm font-medium text-ink">{emp.full_name}</p>
                   <p className="text-xs text-slate-500">
                     {emp.department?.name || '—'} {emp.position?.name ? `· ${emp.position.name}` : ''} ·{' '}
-                    {emp.base_annual_days} zile/an {emp.email ? `· ${emp.email}` : ''}
+                    {emp.base_annual_days} zile/an
+                    {emp.contract_number ? ` · Contract ${emp.contract_number}` : ''}
+                    {emp.email ? ` · ${emp.email}` : ''}
                   </p>
                 </div>
                 <div className="flex gap-1">

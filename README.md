@@ -82,7 +82,28 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — generare automată a documentului "Cerere de concediu" (.docx)
+## Actualizare — Cerere adeverințe (funcție nouă) + finisări interfață
+
+Cea mai recentă actualizare adaugă:
+
+- **Tab nou "Cerere adeverințe"**, disponibil public (fără cont), lângă "Cerere concediu" —
+  angajatul își alege numele, tipul de adeverință, motivul, modul de ridicare a documentului
+  și observații.
+- **Câmp nou "Număr contract"**, obligatoriu la introducerea unui angajat (Setări → Angajați).
+- Panoul personal al angajatului arată acum, în aceeași listă "Cererile mele", și cererile de
+  adeverințe, nu doar cele de concediu.
+- Panoul Admin: tab-ul "Aprobări" s-a redenumit în **"Aprobări concedii"**, și a apărut un tab
+  nou **"Cereri adeverințe"** unde marchezi cererile ca "Eliberate".
+- Câteva finisări: numele contului logat apare acum lângă butonul de deconectare, textul din
+  subsolul paginii s-a schimbat în "Madrigal - Documente Resurse Umane", iar tab-urile
+  Recuperări / Privire generală / Setări au un aspect mai ordonat (tabele stivuite, coloane
+  redimensionate, ordine reorganizată în Setări).
+
+Rulează o singură dată **`migration_6_contract_certificates.sql`** în Supabase → SQL Editor,
+apoi re-urcă fișierele pe GitHub. După aceea, intră în **Setări → Angajați** și completează
+numărul de contract pentru fiecare angajat existent (câmpul e acum obligatoriu la editare).
+
+
 
 Din Panoul Admin → **Aprobări**, la fiecare cerere aprobată de tip Odihnă, Fără plată sau
 Evenimente speciale, apare acum un buton **"Descarcă cererea (.docx)"** care generează

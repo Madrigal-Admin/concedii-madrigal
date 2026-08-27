@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import PublicRequestForm from './components/PublicRequestForm'
+import CertificateRequestForm from './components/CertificateRequestForm'
 import Login from './components/Login'
 import AdminDashboard from './components/AdminDashboard'
 import EmployeeDashboard from './components/EmployeeDashboard'
@@ -64,12 +65,22 @@ export default function App() {
     setView('public')
   }
 
+  const displayName = role === 'employee' ? employee?.full_name : role === 'admin' ? session?.user?.email : null
+
   return (
     <div className="min-h-screen">
-      <Navbar view={view} setView={setView} session={session} role={role} onLogout={handleLogout} />
+      <Navbar
+        view={view}
+        setView={setView}
+        session={session}
+        role={role}
+        displayName={displayName}
+        onLogout={handleLogout}
+      />
 
       <main className="mx-auto max-w-5xl px-5 py-10">
         {view === 'public' && <PublicRequestForm />}
+        {view === 'certificate' && <CertificateRequestForm />}
         {view === 'login' && !session && <Login />}
 
         {view === 'login' && session && checkingRole && (
@@ -90,7 +101,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        Concedii Madrigal — instrument intern de gestiune a concediilor
+        Madrigal - Documente Resurse Umane
       </footer>
     </div>
   )
