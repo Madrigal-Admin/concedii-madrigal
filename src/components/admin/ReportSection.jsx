@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Download, Printer, ListChecks } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../supabaseClient'
-import { formatDate, STATUS_LABELS, LEAVE_TYPES } from '../../lib/leaveCalculations'
+import { formatDate, STATUS_LABELS_ADMIN, LEAVE_TYPES } from '../../lib/leaveCalculations'
 import EmployeeMultiSelect from './EmployeeMultiSelect'
 
 export default function ReportSection() {
@@ -73,7 +73,7 @@ export default function ReportSection() {
         'Data început': formatDate(r.start_date),
         'Data sfârșit': formatDate(r.end_date),
         'Zile lucrătoare': r.working_days,
-        Status: STATUS_LABELS[r.status] || r.status,
+        Status: STATUS_LABELS_ADMIN[r.status] || r.status,
       }
     })
   }
@@ -259,7 +259,7 @@ export default function ReportSection() {
                       {formatDate(r.start_date)} → {formatDate(r.end_date)}
                     </td>
                     <td className="px-3 py-2 text-right">{r.working_days}</td>
-                    <td className="px-3 py-2 text-slate-500">{STATUS_LABELS[r.status]}</td>
+                    <td className="px-3 py-2 text-slate-500">{STATUS_LABELS_ADMIN[r.status]}</td>
                   </tr>
                 )
               })}

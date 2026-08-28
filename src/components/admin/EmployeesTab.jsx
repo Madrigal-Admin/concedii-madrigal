@@ -141,10 +141,10 @@ export default function EmployeesTab() {
   }
 
   return (
-    <div>
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+        className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
       >
         <h3 className="font-display text-lg font-semibold text-ink">
           {editingId ? 'Editează angajat' : 'Adaugă angajat nou'}
@@ -306,14 +306,14 @@ export default function EmployeesTab() {
         </div>
       </form>
 
-      <div className="mx-auto mt-6 max-w-2xl">
+      <div>
         <h3 className="mb-3 font-display text-lg font-semibold text-ink">
           Angajați ({employees.length})
         </h3>
         {loading ? (
           <p className="text-sm text-slate-500">Se încarcă…</p>
         ) : (
-          <div className="space-y-2">
+          <div className="max-h-[420px] space-y-2 overflow-y-auto">
             {employees.map((emp) => (
               <div
                 key={emp.id}

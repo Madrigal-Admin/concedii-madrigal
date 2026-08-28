@@ -93,10 +93,10 @@ export default function RecoveriesTab() {
   }
 
   return (
-    <div>
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+        className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
       >
         <h3 className="font-display text-lg font-semibold text-ink">Adaugă recuperare</h3>
         <div>
@@ -144,7 +144,7 @@ export default function RecoveriesTab() {
         </button>
       </form>
 
-      <div className="mx-auto mt-6 max-w-2xl">
+      <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-display text-lg font-semibold text-ink">Situația recuperărilor</h3>
           <button
@@ -169,10 +169,10 @@ export default function RecoveriesTab() {
         {loading ? (
           <p className="text-sm text-slate-500">Se încarcă…</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="max-h-[460px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-2.5">Angajat</th>
                   <th className="px-4 py-2.5">Departament</th>
                   <th className="px-4 py-2.5">Funcție</th>
@@ -209,7 +209,7 @@ export default function RecoveriesTab() {
         </button>
 
         {showLog && (
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 max-h-[420px] space-y-2 overflow-y-auto">
             {recoveryEntries.map((r) => (
               <div
                 key={r.id}

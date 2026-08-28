@@ -9,9 +9,9 @@ import EmployeeDashboard from './components/EmployeeDashboard'
 
 export default function App() {
   const [session, setSession] = useState(null)
-  const [role, setRole] = useState(null) // 'admin' | 'employee' | null
+  const [role, setRole] = useState(null) // 'full_admin' | 'limited_admin' | 'employee' | 'unknown' | null
   const [employee, setEmployee] = useState(null)
-  const [view, setView] = useState('public')
+  const [view, setView] = useState('login')
   const [checkingRole, setCheckingRole] = useState(false)
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function App() {
     } else {
       setRole(null)
       setEmployee(null)
-      setView('public')
+      setView('login')
     }
   }, [session])
 
@@ -35,19 +35,26 @@ export default function App() {
     const uid = session.user.id
     const email = session.user.email
 
-    const { data: adminRow } = await supabase.from('admins').select('id').eq('id', uid).maybeSingle()
-    if (adminRow) {
-      setRole('admin')
-      setView('admin')
-      setCheckingRole(false)
-      return
-    }
-
+    // Caută întâi angajatul cu acest email — indiferent dacă e și admin —
+    // ca să-i putem lega contul (necesar pentru promovarea la rol de admin).
     const { data: empRow } = await supabase
       .from('employees')
       .select('*, department:departments(name), position:positions(name)')
       .eq('email', email)
       .maybeSingle()
+
+    if (empRow && empRow.auth_user_id !== uid) {
+      supabase.from('employees').update({ auth_user_id: uid }).eq('id', empRow.id) // fire-and-forget
+    }
+
+    const { data: adminRow } = await supabase.from('admins').select('role').eq('id', uid).maybeSingle()
+    if (adminRow) {
+      setRole(adminRow.role === 'limited' ? 'limited_admin' : 'full_admin')
+      setEmployee(empRow || null)
+      setView('admin')
+      setCheckingRole(false)
+      return
+    }
 
     if (empRow) {
       setRole('employee')
@@ -55,17 +62,20 @@ export default function App() {
       setView('employee')
     } else {
       setRole('unknown')
-      setView('public')
+      setView('login')
     }
     setCheckingRole(false)
   }
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    setView('public')
+    setView('login')
   }
 
-  const displayName = role === 'employee' ? employee?.full_name : role === 'admin' ? session?.user?.email : null
+  const isAdmin = role === 'full_admin' || role === 'limited_admin'
+  const roleLabel =
+    role === 'full_admin' ? 'HR Admin' : role === 'limited_admin' ? 'HR Operational' : role === 'employee' ? 'Angajat' : null
+  const displayName = employee?.full_name || session?.user?.email || null
 
   return (
     <div className="min-h-screen">
@@ -75,27 +85,31 @@ export default function App() {
         session={session}
         role={role}
         displayName={displayName}
+        roleLabel={roleLabel}
         onLogout={handleLogout}
       />
 
       <main className="mx-auto max-w-5xl px-5 py-10">
-        {view === 'public' && <PublicRequestForm />}
-        {view === 'certificate' && <CertificateRequestForm />}
-        {view === 'login' && !session && <Login />}
+        {!session && <Login />}
 
-        {view === 'login' && session && checkingRole && (
-          <p className="text-sm text-slate-500">Se verifică contul…</p>
-        )}
+        {session && checkingRole && <p className="text-sm text-slate-500">Se verifică contul…</p>}
 
-        {session && role === 'unknown' && (
+        {session && !checkingRole && role === 'unknown' && (
           <div className="mx-auto max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
             Contul tău este autentificat, dar nu este asociat niciunui angajat sau administrator.
             Cere HR-ului să te adauge în lista de angajați cu același email.
           </div>
         )}
 
-        {view === 'admin' && role === 'admin' && <AdminDashboard />}
-        {view === 'employee' && role === 'employee' && employee && (
+        {session && role === 'employee' && view === 'leave' && employee && (
+          <PublicRequestForm employee={employee} />
+        )}
+        {session && role === 'employee' && view === 'certificate' && employee && (
+          <CertificateRequestForm employee={employee} />
+        )}
+
+        {session && isAdmin && view === 'admin' && <AdminDashboard role={role} currentEmployee={employee} />}
+        {session && role === 'employee' && view === 'employee' && employee && (
           <EmployeeDashboard employee={employee} />
         )}
       </main>

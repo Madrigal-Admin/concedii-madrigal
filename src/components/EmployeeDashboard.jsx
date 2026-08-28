@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import {
   calculateBalance,
   formatDate,
-  STATUS_LABELS,
+  STATUS_LABELS_EMPLOYEE,
   STATUS_STYLES,
   CERTIFICATE_STATUS_LABELS,
   CERTIFICATE_STATUS_STYLES,
@@ -120,7 +120,7 @@ export default function EmployeeDashboard({ employee }) {
                 r.kind === 'leave' ? STATUS_STYLES[r.status] : CERTIFICATE_STATUS_STYLES[r.status]
               }`}
             >
-              {r.kind === 'leave' ? STATUS_LABELS[r.status] : CERTIFICATE_STATUS_LABELS[r.status]}
+              {r.kind === 'leave' ? STATUS_LABELS_EMPLOYEE[r.status] : CERTIFICATE_STATUS_LABELS[r.status]}
             </span>
           </div>
         ))}

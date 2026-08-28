@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown, FileDown } from 'lucide-react'
+import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown, FileDown, ArrowRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import {
   formatDate,
@@ -9,6 +9,8 @@ import {
   countLeaveDays,
   TYPES_THAT_DEDUCT_BALANCE,
   LEAVE_TYPES,
+  STATUS_LABELS_ADMIN,
+  DOCX_AVAILABLE_STATUSES,
 } from '../../lib/leaveCalculations'
 import { downloadFilledLeaveRequestDocx, templateSupportsType } from '../../lib/generateLeaveDocx'
 
@@ -56,6 +58,13 @@ export default function ApprovalsTab() {
     setDocBusyId(null)
   }
 
+  async function moveToPending(id) {
+    setBusyId(id)
+    await supabase.from('leave_requests').update({ status: 'pending' }).eq('id', id)
+    await load()
+    setBusyId(null)
+  }
+
   async function approve(request) {
     setBusyId(request.id)
 
@@ -84,11 +93,7 @@ export default function ApprovalsTab() {
 
     await supabase
       .from('leave_requests')
-      .update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        deduction,
-      })
+      .update({ status: 'approved', reviewed_at: new Date().toISOString(), deduction })
       .eq('id', request.id)
 
     await load()
@@ -153,8 +158,41 @@ export default function ApprovalsTab() {
 
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
+  const submitted = requests.filter((r) => r.status === 'submitted')
   const pending = requests.filter((r) => r.status === 'pending')
-  const rest = requests.filter((r) => r.status !== 'pending')
+  const history = requests.filter((r) => r.status === 'approved' || r.status === 'rejected')
+
+  function RequestMeta({ r }) {
+    return (
+      <>
+        <p className="text-xs text-slate-500">
+          {r.leave_type} · {formatDate(r.start_date)} → {formatDate(r.end_date)} · {r.working_days} zile
+        </p>
+        <p className="mt-0.5 text-xs text-slate-400">Cerere trimisă pe {formatDate(r.created_at)}</p>
+        {r.leave_type === 'Medical' && (r.medical_series_number || r.medical_code) && (
+          <p className="mt-0.5 text-xs text-slate-400">
+            {r.medical_series_number && `Serie și număr: ${r.medical_series_number}`}
+            {r.medical_series_number && r.medical_code && ' · '}
+            {r.medical_code && `Cod indemnizație: ${r.medical_code}`}
+          </p>
+        )}
+        {r.reason && <p className="mt-1 text-xs italic text-slate-400">„{r.reason}”</p>}
+      </>
+    )
+  }
+
+  function DocxButton({ r }) {
+    if (!DOCX_AVAILABLE_STATUSES.includes(r.status) || !templateSupportsType(r.leave_type)) return null
+    return (
+      <button
+        onClick={() => handleDownloadDocx(r)}
+        disabled={docBusyId === r.id}
+        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50 focus-ring"
+      >
+        <FileDown size={12} /> {docBusyId === r.id ? 'Se generează…' : 'Descarcă cererea (.docx)'}
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -162,40 +200,26 @@ export default function ApprovalsTab() {
 
       <section>
         <h3 className="mb-3 font-display text-lg font-semibold text-ink">
-          În așteptare ({pending.length})
+          {STATUS_LABELS_ADMIN.submitted} ({submitted.length})
         </h3>
-        {pending.length === 0 && <p className="text-sm text-slate-500">Nimic de aprobat momentan.</p>}
+        {submitted.length === 0 && <p className="text-sm text-slate-500">Nimic nou momentan.</p>}
         <div className="space-y-2">
-          {pending.map((r) => (
+          {submitted.map((r) => (
             <div
               key={r.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
             >
               <div>
                 <p className="text-sm font-medium text-ink">{r.employee_name}</p>
-                <p className="text-xs text-slate-500">
-                  {r.leave_type} · {formatDate(r.start_date)} → {formatDate(r.end_date)} ·{' '}
-                  {r.working_days} zile
-                </p>
-                <p className="mt-0.5 text-xs text-slate-400">
-                  Cerere trimisă pe {formatDate(r.created_at)}
-                </p>
-                {r.leave_type === 'Medical' && (r.medical_series_number || r.medical_code) && (
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    {r.medical_series_number && `Serie și număr: ${r.medical_series_number}`}
-                    {r.medical_series_number && r.medical_code && ' · '}
-                    {r.medical_code && `Cod indemnizație: ${r.medical_code}`}
-                  </p>
-                )}
-                {r.reason && <p className="mt-1 text-xs italic text-slate-400">„{r.reason}”</p>}
+                <RequestMeta r={r} />
               </div>
               <div className="flex gap-2">
                 <button
                   disabled={busyId === r.id}
-                  onClick={() => approve(r)}
-                  className="flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 focus-ring"
+                  onClick={() => moveToPending(r.id)}
+                  className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50 focus-ring"
                 >
-                  <Check size={13} /> Aprobă
+                  <ArrowRight size={13} /> Trece în așteptare
                 </button>
                 <button
                   disabled={busyId === r.id}
@@ -211,9 +235,50 @@ export default function ApprovalsTab() {
       </section>
 
       <section>
+        <h3 className="mb-3 font-display text-lg font-semibold text-ink">
+          {STATUS_LABELS_ADMIN.pending} ({pending.length})
+        </h3>
+        {pending.length === 0 && <p className="text-sm text-slate-500">Nimic de aprobat momentan.</p>}
+        <div className="space-y-2">
+          {pending.map((r) => (
+            <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">{r.employee_name}</p>
+                  <RequestMeta r={r} />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => approve(r)}
+                    className="flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 focus-ring"
+                  >
+                    <Check size={13} /> Aprobă
+                  </button>
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => reject(r.id)}
+                    className="flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-50 focus-ring"
+                  >
+                    <X size={13} /> Respinge
+                  </button>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <DocxButton r={r} />
+              </div>
+              {docErrorId === r.id && (
+                <p className="mt-1 text-xs text-rose-600">Nu am putut genera documentul. Încearcă din nou.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
         <h3 className="mb-3 font-display text-lg font-semibold text-ink">Istoric</h3>
         <div className="space-y-2">
-          {rest.map((r) => {
+          {history.map((r) => {
             const isApproved = r.status === 'approved'
             const isEditing = editingId === r.id
             const d = r.deduction || {}
@@ -227,11 +292,9 @@ export default function ApprovalsTab() {
                     {formatDate(r.start_date)} → {formatDate(r.end_date)} · {r.working_days} zile
                   </span>
                   <span
-                    className={
-                      isApproved ? 'font-medium text-emerald-700' : 'font-medium text-rose-600'
-                    }
+                    className={isApproved ? 'font-medium text-emerald-700' : 'font-medium text-rose-600'}
                   >
-                    {isApproved ? 'Aprobat' : 'Respins'}
+                    {isApproved ? 'Aprobată' : 'Respinsă'}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-400">
@@ -267,15 +330,7 @@ export default function ApprovalsTab() {
                     >
                       <Pencil size={12} /> Editează distribuția
                     </button>
-                    {templateSupportsType(r.leave_type) && (
-                      <button
-                        onClick={() => handleDownloadDocx(r)}
-                        disabled={docBusyId === r.id}
-                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50 focus-ring"
-                      >
-                        <FileDown size={12} /> {docBusyId === r.id ? 'Se generează…' : 'Descarcă cererea (.docx)'}
-                      </button>
-                    )}
+                    <DocxButton r={r} />
                   </div>
                 )}
                 {isApproved && !isEditing && docErrorId === r.id && (
@@ -386,6 +441,8 @@ function CreateRequestForm({ onCreated }) {
     setSaving(true)
     const employee = employees.find((e) => e.id === employeeId)
 
+    // Cererile introduse direct de Admin pornesc din "În așteptare" —
+    // sar peste etapa "Solicitată", pentru că Adminul le știe deja.
     const { error } = await supabase.from('leave_requests').insert({
       employee_id: employeeId,
       employee_name: employee?.full_name || '',
@@ -426,7 +483,7 @@ function CreateRequestForm({ onCreated }) {
         <form onSubmit={handleSubmit} className="space-y-3 border-t border-slate-200 p-4">
           <p className="text-xs text-slate-500">
             Folosește acest formular pentru cereri introduse direct de tine — de exemplu concedii
-            medicale, care nu pot fi trimise de angajați prin formularul public.
+            medicale, care nu pot fi trimise de angajați prin formularul lor.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">

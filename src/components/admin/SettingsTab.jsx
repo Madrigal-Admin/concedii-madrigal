@@ -67,7 +67,7 @@ function ListManager({ title, table, hint }) {
       </form>
       {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
 
-      <div className="mt-4 space-y-1.5">
+      <div className="mt-4 max-h-[420px] space-y-1.5 overflow-y-auto">
         {loading && <p className="text-sm text-slate-500">Se încarcă…</p>}
         {!loading && items.length === 0 && (
           <p className="text-sm text-slate-400">Nicio valoare adăugată încă.</p>
@@ -91,7 +91,7 @@ function ListManager({ title, table, hint }) {
   )
 }
 
-export default function SettingsTab() {
+export default function SettingsTab({ currentEmployee }) {
   return (
     <div className="space-y-10">
       <section>
@@ -129,6 +129,107 @@ export default function SettingsTab() {
           />
         </div>
       </section>
+
+      <section>
+        <h3 className="mb-1 font-display text-lg font-semibold text-ink">Administratori</h3>
+        <p className="mb-4 text-sm text-slate-500">
+          Poți da sau retrage drepturi de administrare oricărui angajat care și-a creat deja cont
+          de autentificare. <strong>HR Admin</strong> are acces complet, inclusiv la Setări.{' '}
+          <strong>HR Operational</strong> poate gestiona cererile și recuperările, dar nu are
+          acces la Setări.
+        </p>
+        <AdminRolesManager currentEmployee={currentEmployee} />
+      </section>
+    </div>
+  )
+}
+
+function AdminRolesManager({ currentEmployee }) {
+  const [employees, setEmployees] = useState([])
+  const [adminRoles, setAdminRoles] = useState({}) // auth_user_id -> 'full' | 'limited'
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState(null)
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function load() {
+    setLoading(true)
+    const [{ data: emps }, { data: admins }] = await Promise.all([
+      supabase
+        .from('employees')
+        .select('id, full_name, email, auth_user_id')
+        .not('auth_user_id', 'is', null)
+        .order('full_name'),
+      supabase.from('admins').select('id, role'),
+    ])
+    setEmployees(emps || [])
+    const map = {}
+    ;(admins || []).forEach((a) => {
+      map[a.id] = a.role
+    })
+    setAdminRoles(map)
+    setLoading(false)
+  }
+
+  async function changeRole(emp, newRole) {
+    if (
+      currentEmployee?.id === emp.id &&
+      newRole !== 'full' &&
+      !confirm('Îți schimbi propriul rol și ai putea pierde accesul la Setări. Continui?')
+    ) {
+      return
+    }
+
+    setBusyId(emp.id)
+    if (newRole === 'none') {
+      await supabase.from('admins').delete().eq('id', emp.auth_user_id)
+    } else {
+      await supabase
+        .from('admins')
+        .upsert({ id: emp.auth_user_id, role: newRole }, { onConflict: 'id' })
+    }
+    await load()
+    setBusyId(null)
+  }
+
+  if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
+
+  return (
+    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      {employees.length === 0 && (
+        <p className="p-5 text-sm text-slate-400">
+          Niciun angajat nu și-a creat încă cont de autentificare — abia atunci poate fi promovat
+          la rol de admin.
+        </p>
+      )}
+      <div className="max-h-[420px] overflow-y-auto">
+        {employees.map((emp) => {
+          const role = adminRoles[emp.auth_user_id] || 'none'
+          return (
+            <div
+              key={emp.id}
+              className="flex items-center justify-between gap-3 border-b border-slate-100 p-3 text-sm last:border-0"
+            >
+              <div>
+                <p className="font-medium text-ink">{emp.full_name}</p>
+                <p className="text-xs text-slate-400">{emp.email}</p>
+              </div>
+              <select
+                value={role}
+                disabled={busyId === emp.id}
+                onChange={(e) => changeRole(emp, e.target.value)}
+                className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs focus-ring disabled:opacity-50"
+              >
+                <option value="none">Angajat</option>
+                <option value="limited">HR Operational</option>
+                <option value="full">HR Admin</option>
+              </select>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -179,11 +280,8 @@ function LegalHolidaysManager() {
   }
 
   return (
-    <div>
-      <form
-        onSubmit={handleAdd}
-        className="mx-auto max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
-      >
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+      <form onSubmit={handleAdd} className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
         <h4 className="text-sm font-semibold text-ink">Adaugă zi liberă / interval</h4>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -227,11 +325,11 @@ function LegalHolidaysManager() {
         </button>
       </form>
 
-      <div className="mx-auto mt-6 max-w-2xl">
+      <div>
         {loading ? (
           <p className="text-sm text-slate-500">Se încarcă…</p>
         ) : (
-          <div className="space-y-2">
+          <div className="max-h-[420px] space-y-2 overflow-y-auto">
             {items.length === 0 && (
               <p className="text-sm text-slate-400">Nicio zi liberă legală adăugată încă.</p>
             )}

@@ -3,10 +3,8 @@ import { Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { countLeaveDays, PUBLIC_LEAVE_TYPES } from '../lib/leaveCalculations'
 
-export default function PublicRequestForm() {
-  const [employees, setEmployees] = useState([])
+export default function PublicRequestForm({ employee }) {
   const [legalHolidays, setLegalHolidays] = useState([])
-  const [employeeId, setEmployeeId] = useState('')
   const [leaveType, setLeaveType] = useState(PUBLIC_LEAVE_TYPES[0])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -15,17 +13,8 @@ export default function PublicRequestForm() {
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    loadEmployees()
     loadLegalHolidays()
   }, [])
-
-  async function loadEmployees() {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id, full_name, department:departments(name)')
-      .order('full_name')
-    if (!error) setEmployees(data || [])
-  }
 
   async function loadLegalHolidays() {
     const { data, error } = await supabase.from('legal_holidays').select('*')
@@ -38,24 +27,22 @@ export default function PublicRequestForm() {
     e.preventDefault()
     setErrorMsg('')
 
-    if (!employeeId) return setErrorMsg('Te rugăm să îți selectezi numele din listă.')
     if (!startDate || !endDate) return setErrorMsg('Completează data de început și de sfârșit.')
     if (new Date(endDate) < new Date(startDate))
       return setErrorMsg('Data de sfârșit nu poate fi înainte de data de început.')
     if (leaveDays === 0) return setErrorMsg('Perioada selectată nu conține nicio zi de concediu.')
 
     setStatus('sending')
-    const employee = employees.find((e) => e.id === employeeId)
 
     const { error } = await supabase.from('leave_requests').insert({
-      employee_id: employeeId,
-      employee_name: employee?.full_name || '',
+      employee_id: employee.id,
+      employee_name: employee.full_name,
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
       working_days: leaveDays,
       reason: reason || null,
-      status: 'pending',
+      status: 'submitted',
     })
 
     if (error) {
@@ -65,7 +52,6 @@ export default function PublicRequestForm() {
     }
 
     setStatus('success')
-    setEmployeeId('')
     setStartDate('')
     setEndDate('')
     setReason('')
@@ -77,8 +63,8 @@ export default function PublicRequestForm() {
         <CheckCircle2 className="mx-auto mb-3 text-emerald-600" size={40} />
         <h2 className="font-display text-xl font-semibold text-emerald-900">Cerere trimisă</h2>
         <p className="mt-2 text-sm text-emerald-800">
-          Cererea ta a fost înregistrată cu statusul „În așteptare”. Vei fi anunțat/ă când este
-          aprobată sau respinsă.
+          Cererea ta a fost înregistrată cu statusul „Trimisă”. Vei fi anunțat/ă când este
+          aprobată.
         </p>
         <button
           onClick={() => setStatus(null)}
@@ -94,34 +80,13 @@ export default function PublicRequestForm() {
     <div className="mx-auto max-w-md">
       <h1 className="font-display text-2xl font-semibold text-ink">Cerere de concediu</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Fără cont necesar — selectează-ți numele și completează perioada dorită.
+        Trimiți cererea în numele tău, {employee.full_name.split(' ')[0]}.
       </p>
       <p className="mt-1 text-xs text-slate-400">
         Pentru concediu medical, te rugăm să contactezi direct HR.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Numele tău</label>
-          <select
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          >
-            <option value="">Selectează din listă…</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.full_name} {emp.department?.name ? `— ${emp.department.name}` : ''}
-              </option>
-            ))}
-          </select>
-          {employees.length === 0 && (
-            <p className="mt-1 text-xs text-amber-600">
-              Lista e goală momentan — HR trebuie să adauge întâi angajați din Panoul Admin.
-            </p>
-          )}
-        </div>
-
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Tip concediu</label>
           <select

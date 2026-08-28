@@ -218,14 +218,28 @@ export function formatDate(d) {
   return date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export const STATUS_LABELS = {
+export const STATUS_LABELS_EMPLOYEE = {
+  submitted: 'Trimisă',
   pending: 'În așteptare',
-  approved: 'Aprobat',
-  rejected: 'Respins',
+  approved: 'Aprobată',
+  rejected: 'Respinsă',
+}
+
+export const STATUS_LABELS_ADMIN = {
+  submitted: 'Solicitată',
+  pending: 'În așteptare',
+  approved: 'Aprobată',
+  rejected: 'Respinsă',
 }
 
 export const STATUS_STYLES = {
+  submitted: 'bg-sky-100 text-sky-800 border-sky-200',
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
   approved: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   rejected: 'bg-rose-100 text-rose-800 border-rose-200',
 }
+
+// Documentul .docx devine disponibil pentru descărcare din momentul în care
+// cererea a trecut de stadiul "Solicitată/Trimisă" (adică Admin a mutat-o
+// manual în "În așteptare"), și rămâne disponibil și după "Aprobată".
+export const DOCX_AVAILABLE_STATUSES = ['pending', 'approved']

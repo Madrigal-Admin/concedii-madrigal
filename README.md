@@ -82,7 +82,34 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — Cerere adeverințe (funcție nouă) + finisări interfață
+## Actualizare — autentificare obligatorie, roluri de admin, statusuri noi
+
+Cea mai recentă actualizare aduce schimbări importante de acces și de flux:
+
+- **Orice acțiune necesită acum autentificare** — formularele publice de cerere concediu/adeverințe
+  au dispărut; angajatul trebuie să-și facă (sau să aibă deja) cont și să se logheze. Pagina de
+  start e acum login-ul, nu formularul de cerere.
+- **Roluri noi de admin**: pe lângă angajat, există acum **HR Admin** (acces complet) și
+  **HR Operational** (acces la Aprobări concedii, Cereri adeverințe și Recuperări, dar deloc la
+  Setări). Un HR Admin poate promova/retrograda pe oricine, dintr-o secțiune nouă
+  **Setări → Administratori** — funcționează doar pentru angajați care și-au creat deja cont.
+- **Statusuri noi pentru cererile de concediu**: Trimisă/Solicitată → În așteptare → Aprobată.
+  Documentul .docx completat automat devine disponibil din momentul în care Adminul trece cererea
+  în "În așteptare" (nu mai trebuie să aștepți aprobarea finală ca să-l descarci, deși rămâne
+  disponibil și după aprobare).
+- Template-ul .docx a fost actualizat cu textul "Data solicitării" (fost "Data înregistrării").
+
+**Pași obligatorii, în ordine:**
+
+1. Rulează **`migration_7_roles_status_auth.sql`** în Supabase → SQL Editor (o singură dată).
+2. Mergi în Supabase → **Authentication → Settings** și **dezactivează "Confirm email"** — pas
+   manual, nu se poate face din SQL. Fără el, angajații noi ar rămâne blocați la crearea contului.
+3. Re-urcă fișierele pe GitHub, ca de obicei.
+
+Nu trebuie să faci nimic special pentru contul tău de Admin actual — migrarea îl transformă
+automat în **HR Admin**, cu acces complet, neschimbat.
+
+
 
 Cea mai recentă actualizare adaugă:
 

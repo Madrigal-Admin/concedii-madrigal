@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { CERTIFICATE_TYPES, DELIVERY_METHODS } from '../lib/leaveCalculations'
 
-export default function CertificateRequestForm() {
-  const [employees, setEmployees] = useState([])
-  const [employeeId, setEmployeeId] = useState('')
+export default function CertificateRequestForm({ employee }) {
   const [certificateType, setCertificateType] = useState(CERTIFICATE_TYPES[0])
   const [purpose, setPurpose] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState(DELIVERY_METHODS[0])
@@ -13,30 +11,14 @@ export default function CertificateRequestForm() {
   const [status, setStatus] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
 
-  useEffect(() => {
-    loadEmployees()
-  }, [])
-
-  async function loadEmployees() {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id, full_name, department:departments(name)')
-      .order('full_name')
-    if (!error) setEmployees(data || [])
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     setErrorMsg('')
-
-    if (!employeeId) return setErrorMsg('Te rugăm să îți selectezi numele din listă.')
-
     setStatus('sending')
-    const employee = employees.find((e) => e.id === employeeId)
 
     const { error } = await supabase.from('certificate_requests').insert({
-      employee_id: employeeId,
-      employee_name: employee?.full_name || '',
+      employee_id: employee.id,
+      employee_name: employee.full_name,
       certificate_type: certificateType,
       purpose: purpose || null,
       delivery_method: deliveryMethod,
@@ -51,7 +33,6 @@ export default function CertificateRequestForm() {
     }
 
     setStatus('success')
-    setEmployeeId('')
     setCertificateType(CERTIFICATE_TYPES[0])
     setPurpose('')
     setDeliveryMethod(DELIVERY_METHODS[0])
@@ -80,26 +61,10 @@ export default function CertificateRequestForm() {
     <div className="mx-auto max-w-md">
       <h1 className="font-display text-2xl font-semibold text-ink">Cerere adeverințe</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Fără cont necesar — selectează-ți numele și completează detaliile de mai jos.
+        Trimiți cererea în numele tău, {employee.full_name.split(' ')[0]}.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Numele tău</label>
-          <select
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          >
-            <option value="">Selectează din listă…</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.full_name} {emp.department?.name ? `— ${emp.department.name}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Tip adeverință</label>
           <select

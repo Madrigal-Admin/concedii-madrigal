@@ -6,24 +6,26 @@ import OverviewTab from './admin/OverviewTab'
 import ReportsTab from './admin/ReportsTab'
 import SettingsTab from './admin/SettingsTab'
 
-const TABS = [
+const ALL_TABS = [
   { key: 'approvals', label: 'Aprobări concedii' },
   { key: 'certificates', label: 'Cereri adeverințe' },
   { key: 'recoveries', label: 'Recuperări' },
   { key: 'overview', label: 'Privire generală' },
   { key: 'reports', label: 'Rapoarte' },
-  { key: 'settings', label: 'Setări' },
+  { key: 'settings', label: 'Setări', fullAdminOnly: true },
 ]
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ role, currentEmployee }) {
   const [tab, setTab] = useState('approvals')
+  const isFullAdmin = role === 'full_admin'
+  const tabs = ALL_TABS.filter((t) => !t.fullAdminOnly || isFullAdmin)
 
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="font-display text-2xl font-semibold text-ink">Panou Admin</h1>
 
       <div className="mt-5 flex flex-wrap gap-1.5 border-b border-slate-200 pb-3">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
@@ -42,7 +44,7 @@ export default function AdminDashboard() {
         {tab === 'recoveries' && <RecoveriesTab />}
         {tab === 'overview' && <OverviewTab />}
         {tab === 'reports' && <ReportsTab />}
-        {tab === 'settings' && <SettingsTab />}
+        {tab === 'settings' && isFullAdmin && <SettingsTab currentEmployee={currentEmployee} />}
       </div>
     </div>
   )

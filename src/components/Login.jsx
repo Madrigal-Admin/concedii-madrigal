@@ -42,13 +42,23 @@ export default function Login() {
       return
     }
 
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
     setLoading(false)
     if (error) {
       setError(error.message)
       return
     }
-    setInfo('Cont creat! Dacă ți se cere confirmare prin email, verifică-ți inboxul, apoi conectează-te.')
+
+    if (data.session) {
+      // Confirmarea prin email e dezactivată — contul e activ imediat și
+      // App.jsx va prelua automat sesiunea, te va conecta și te va duce
+      // direct la panoul tău. Nu trebuie să faci nimic altceva aici.
+      return
+    }
+
+    // Dacă totuși confirmarea prin email e activă pe acest proiect, contul
+    // așteaptă confirmarea din inbox înainte să te poți loga.
+    setInfo('Cont creat! Verifică-ți inboxul pentru linkul de confirmare, apoi conectează-te.')
     setMode('signin')
   }
 
@@ -56,7 +66,8 @@ export default function Login() {
     <div className="mx-auto max-w-sm">
       <h1 className="font-display text-2xl font-semibold text-ink">Autentificare</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Pentru Admin sau pentru angajați care vor să își vadă soldul personal.
+        Autentificarea este necesară pentru orice acțiune — cereri de concediu, cereri de
+        adeverințe, sau acces în Panoul Admin.
       </p>
 
       <div className="mt-6 flex rounded-full bg-slate-100 p-1 text-sm">
