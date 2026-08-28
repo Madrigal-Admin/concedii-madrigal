@@ -73,6 +73,9 @@ export default function App() {
   }
 
   const isAdmin = role === 'full_admin' || role === 'limited_admin'
+  // Un admin care e și angajat (fișă în tabelul employees) trebuie să poată
+  // depune propriile cereri, ca oricare alt angajat.
+  const hasEmployeeAccess = role === 'employee' || (isAdmin && !!employee)
   const roleLabel =
     role === 'full_admin' ? 'HR Admin' : role === 'limited_admin' ? 'HR Operational' : role === 'employee' ? 'Angajat' : null
   const displayName = employee?.full_name || session?.user?.email || null
@@ -84,6 +87,7 @@ export default function App() {
         setView={setView}
         session={session}
         role={role}
+        hasEmployeeAccess={hasEmployeeAccess}
         displayName={displayName}
         roleLabel={roleLabel}
         onLogout={handleLogout}
@@ -101,15 +105,15 @@ export default function App() {
           </div>
         )}
 
-        {session && role === 'employee' && view === 'leave' && employee && (
+        {session && hasEmployeeAccess && view === 'leave' && employee && (
           <PublicRequestForm employee={employee} />
         )}
-        {session && role === 'employee' && view === 'certificate' && employee && (
+        {session && hasEmployeeAccess && view === 'certificate' && employee && (
           <CertificateRequestForm employee={employee} />
         )}
 
         {session && isAdmin && view === 'admin' && <AdminDashboard role={role} currentEmployee={employee} />}
-        {session && role === 'employee' && view === 'employee' && employee && (
+        {session && hasEmployeeAccess && view === 'employee' && employee && (
           <EmployeeDashboard employee={employee} />
         )}
       </main>

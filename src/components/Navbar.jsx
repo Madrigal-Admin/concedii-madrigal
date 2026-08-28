@@ -1,8 +1,8 @@
 import { LogOut } from 'lucide-react'
 
-export default function Navbar({ view, setView, session, role, displayName, roleLabel, onLogout }) {
+export default function Navbar({ view, setView, session, role, hasEmployeeAccess, displayName, roleLabel, onLogout }) {
   const isAdmin = role === 'full_admin' || role === 'limited_admin'
-  const homeView = isAdmin ? 'admin' : role === 'employee' ? 'employee' : 'login'
+  const homeView = isAdmin ? 'admin' : hasEmployeeAccess ? 'employee' : 'login'
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -15,7 +15,7 @@ export default function Navbar({ view, setView, session, role, displayName, role
         </button>
 
         <nav className="flex flex-wrap items-center gap-2 text-sm">
-          {session && role === 'employee' && (
+          {session && hasEmployeeAccess && (
             <>
               <button
                 onClick={() => setView('leave')}

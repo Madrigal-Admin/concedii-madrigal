@@ -82,7 +82,21 @@ Din **Site settings → Domain management → Options → Edit site name**, poț
 
 ---
 
-## Actualizare — autentificare obligatorie, roluri de admin, statusuri noi
+## Actualizare — adminii care sunt și angajați își pot depune propriile cereri
+
+Dacă un cont de Admin (HR Admin sau HR Operational) are și o fișă de angajat asociată (același
+email), vede acum, pe lângă "Panou Admin", și tab-urile **"Cerere concediu"**, **"Cerere
+adeverințe"** și **"Panoul meu"** — exact ca un angajat obișnuit. Cererile lui trec prin fluxul
+normal de aprobare (Trimisă → În așteptare → Aprobată), vizibile în Aprobări ca oricare altele.
+
+Nu e nevoie de nicio modificare în Supabase pentru asta — e strict o schimbare de interfață. Doar
+re-urcă fișierele pe GitHub.
+
+Un lucru de reținut: dacă ești singurul HR Admin, tehnic tu ți-ai putea aproba propria cerere —
+nu e o eroare, dar dacă vrei principiul de "patru ochi" pentru cererile din HR, ai nevoie de încă
+un HR Admin sau HR Operational care să le aprobe pe ale tale.
+
+
 
 Cea mai recentă actualizare aduce schimbări importante de acces și de flux:
 
