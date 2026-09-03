@@ -17,8 +17,8 @@ export default function CertificateRequestForm({ employee }) {
     setStatus('sending')
 
     const { error } = await supabase.from('certificate_requests').insert({
-      employee_id: employee.id,
-      employee_name: employee.full_name,
+      angajat_id: employee.id,
+      employee_name: employee.nume_complet,
       certificate_type: certificateType,
       purpose: purpose || null,
       delivery_method: deliveryMethod,
@@ -61,7 +61,7 @@ export default function CertificateRequestForm({ employee }) {
     <div className="mx-auto max-w-md">
       <h1 className="font-display text-2xl font-semibold text-ink">Cerere adeverințe</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Trimiți cererea în numele tău, {employee.full_name.split(' ')[0]}.
+        Trimiți cererea în numele tău, {employee.nume_complet.split(' ')[0]}.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

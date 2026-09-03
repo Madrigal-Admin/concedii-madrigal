@@ -1,21 +1,22 @@
 import { LogOut } from 'lucide-react'
 
-export default function Navbar({ view, setView, session, role, hasEmployeeAccess, displayName, roleLabel, onLogout }) {
+export default function Navbar({ view, setView, role, hasEmployeeAccess, displayName, roleLabel, onLogout }) {
   const isAdmin = role === 'full_admin' || role === 'limited_admin'
-  const homeView = isAdmin ? 'admin' : hasEmployeeAccess ? 'employee' : 'login'
+  const homeView = isAdmin ? 'admin' : 'employee'
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-y-2 px-5 py-4">
-        <button
-          onClick={() => setView(homeView)}
-          className="flex items-center gap-2 text-left focus-ring rounded"
-        >
-          <img src="/logo.png" alt="Madrigal" className="h-10 w-auto" />
+    <header className="site-header">
+      <div className="site-header__inner">
+        <button onClick={() => setView(homeView)} className="site-header__brand text-left focus-ring rounded">
+          <img src="/assets/logo-madrigal.png" alt="Madrigal" className="site-header__logo" />
+          <div className="site-header__text">
+            <h1>Concedii &amp; Adeverințe</h1>
+            <p>Resurse Umane — Corul Madrigal</p>
+          </div>
         </button>
 
         <nav className="flex flex-wrap items-center gap-2 text-sm">
-          {session && hasEmployeeAccess && (
+          {hasEmployeeAccess && (
             <>
               <button
                 onClick={() => setView('leave')}
@@ -46,7 +47,7 @@ export default function Navbar({ view, setView, session, role, hasEmployeeAccess
             </>
           )}
 
-          {session && isAdmin && (
+          {isAdmin && (
             <button
               onClick={() => setView('admin')}
               className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
@@ -57,22 +58,20 @@ export default function Navbar({ view, setView, session, role, hasEmployeeAccess
             </button>
           )}
 
-          {session && displayName && (
+          {displayName && (
             <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
               {displayName}
               {roleLabel ? ` · ${roleLabel}` : ''}
             </span>
           )}
 
-          {session && (
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100 focus-ring"
-              title="Deconectare"
-            >
-              <LogOut size={15} />
-            </button>
-          )}
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100 focus-ring"
+            title="Deconectare"
+          >
+            <LogOut size={15} />
+          </button>
         </nav>
       </div>
     </header>

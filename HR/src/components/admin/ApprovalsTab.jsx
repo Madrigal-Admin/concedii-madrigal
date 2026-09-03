@@ -39,7 +39,7 @@ export default function ApprovalsTab() {
     setLoading(true)
     const [{ data }, { data: emps }] = await Promise.all([
       supabase.from('leave_requests').select('*').order('created_at', { ascending: false }),
-      supabase.from('employees').select('id, department:departments(name), position:positions(name)'),
+      supabase.from('angajati').select('id, department:departments(name), position:positions(name)'),
     ])
     setRequests(data || [])
     setEmployees(emps || [])
@@ -50,7 +50,7 @@ export default function ApprovalsTab() {
     setDocErrorId(null)
     setDocBusyId(request.id)
     try {
-      const employee = employees.find((e) => e.id === request.employee_id)
+      const employee = employees.find((e) => e.id === request.angajat_id)
       await downloadFilledLeaveRequestDocx(request, employee)
     } catch (err) {
       setDocErrorId(request.id)
@@ -71,21 +71,19 @@ export default function ApprovalsTab() {
     let deduction = {}
 
     if (TYPES_THAT_DEDUCT_BALANCE.includes(request.leave_type)) {
-      const [{ data: employee }, { data: otherApproved }, { data: recoveries }, { data: yearAllocations }] =
-        await Promise.all([
-          supabase.from('employees').select('*').eq('id', request.employee_id).maybeSingle(),
-          supabase
-            .from('leave_requests')
-            .select('*')
-            .eq('employee_id', request.employee_id)
-            .eq('status', 'approved')
-            .neq('id', request.id),
-          supabase.from('overtime_recoveries').select('*').eq('employee_id', request.employee_id),
-          supabase.from('year_allocations').select('*').eq('employee_id', request.employee_id),
-        ])
+      const [{ data: employee }, { data: otherApproved }, { data: recoveries }] = await Promise.all([
+        supabase.from('angajati').select('*, hr_profil_angajat(*)').eq('id', request.angajat_id).maybeSingle(),
+        supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('angajat_id', request.angajat_id)
+          .eq('status', 'approved')
+          .neq('id', request.id),
+        supabase.from('overtime_recoveries').select('*').eq('angajat_id', request.angajat_id),
+      ])
 
       if (employee) {
-        const pools = calculateBalance(employee, otherApproved || [], recoveries || [], yearAllocations || [])
+        const pools = calculateBalance(employee, otherApproved || [], recoveries || [])
         const split = computeDefaultSplit(request.working_days, pools)
         deduction = splitToDeduction(split, pools)
       }
@@ -407,9 +405,9 @@ function CreateRequestForm({ onCreated }) {
   useEffect(() => {
     if (!open) return
     supabase
-      .from('employees')
-      .select('id, full_name')
-      .order('full_name')
+      .from('angajati')
+      .select('id, nume_complet')
+      .order('nume_complet')
       .then(({ data }) => setEmployees(data || []))
     supabase
       .from('legal_holidays')
@@ -444,8 +442,8 @@ function CreateRequestForm({ onCreated }) {
     // Cererile introduse direct de Admin pornesc din "În așteptare" —
     // sar peste etapa "Solicitată", pentru că Adminul le știe deja.
     const { error } = await supabase.from('leave_requests').insert({
-      employee_id: employeeId,
-      employee_name: employee?.full_name || '',
+      angajat_id: employeeId,
+      employee_name: employee?.nume_complet || '',
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
@@ -497,7 +495,7 @@ function CreateRequestForm({ onCreated }) {
                 <option value="">Selectează…</option>
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.full_name}
+                    {e.nume_complet}
                   </option>
                 ))}
               </select>

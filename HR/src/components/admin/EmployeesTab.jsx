@@ -1,34 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Pencil, Save, X as XIcon } from 'lucide-react'
+import { Pencil, Save, X as XIcon, Plus, Trash2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
+import { getHrProfil } from '../../lib/leaveCalculations'
 
 const CURRENT_YEAR = new Date().getFullYear()
-const YEAR_Y2 = CURRENT_YEAR - 2
-const YEAR_Y1 = CURRENT_YEAR - 1
-const YEAR_Y = CURRENT_YEAR
 
-const empty = {
-  full_name: '',
-  email: '',
-  contract_number: '',
-  department_id: '',
-  position_id: '',
-  base_annual_days: 21,
-  opening_recoveries: 0,
-  alloc_y2: 0,
-  alloc_y1: 0,
-  alloc_y: 0,
-}
+const emptyVechime = { angajator: '', data_inceput: '', data_sfarsit: '', durata_luni: '' }
 
 export default function EmployeesTab() {
-  const [employees, setEmployees] = useState([])
-  const [departments, setDepartments] = useState([])
-  const [positions, setPositions] = useState([])
-  const [allocationsByEmployee, setAllocationsByEmployee] = useState({})
+  const [angajati, setAngajati] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState(null)
-  const [error, setError] = useState('')
+  const [rollingOver, setRollingOver] = useState(false)
+  const [rolloverError, setRolloverError] = useState('')
 
   useEffect(() => {
     load()
@@ -36,316 +20,361 @@ export default function EmployeesTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data: emps }, { data: depts }, { data: pos }, { data: allocations }] = await Promise.all([
-      supabase
-        .from('employees')
-        .select('*, department:departments(id, name), position:positions(id, name)')
-        .order('full_name'),
-      supabase.from('departments').select('*').order('name'),
-      supabase.from('positions').select('*').order('name'),
-      supabase.from('year_allocations').select('*'),
-    ])
-    setEmployees(emps || [])
-    setDepartments(depts || [])
-    setPositions(pos || [])
-
-    const map = {}
-    ;(allocations || []).forEach((a) => {
-      if (!map[a.employee_id]) map[a.employee_id] = {}
-      map[a.employee_id][a.year] = a.days
-    })
-    setAllocationsByEmployee(map)
+    const { data } = await supabase
+      .from('angajati')
+      .select(
+        '*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_vechime_anterioara(*)'
+      )
+      .eq('activ', true)
+      .order('nume_complet')
+    setAngajati(data || [])
     setLoading(false)
   }
 
-  function startEdit(emp) {
-    setEditingId(emp.id)
-    const allocs = allocationsByEmployee[emp.id] || {}
-    setForm({
-      full_name: emp.full_name,
-      email: emp.email || '',
-      contract_number: emp.contract_number || '',
-      department_id: emp.department_id || '',
-      position_id: emp.position_id || '',
-      base_annual_days: emp.base_annual_days,
-      opening_recoveries: emp.opening_recoveries || 0,
-      alloc_y2: allocs[YEAR_Y2] ?? 0,
-      alloc_y1: allocs[YEAR_Y1] ?? 0,
-      alloc_y: allocs[YEAR_Y] ?? 0,
-    })
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setForm(empty)
-    setError('')
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-    if (!form.full_name.trim()) return setError('Numele este obligatoriu.')
-    if (!form.contract_number.trim()) return setError('Numărul contractului este obligatoriu.')
-
-    const payload = {
-      full_name: form.full_name.trim(),
-      email: form.email.trim().toLowerCase() || null,
-      contract_number: form.contract_number.trim(),
-      department_id: form.department_id || null,
-      position_id: form.position_id || null,
-      base_annual_days: Number(form.base_annual_days) || 0,
-      opening_recoveries: Number(form.opening_recoveries) || 0,
-    }
-
-    let employeeId = editingId
-
-    if (editingId) {
-      const { error } = await supabase.from('employees').update(payload).eq('id', editingId)
-      if (error) {
-        setError('Nu am putut salva. Verifică dacă emailul e deja folosit.')
-        return
-      }
-    } else {
-      const { data, error } = await supabase.from('employees').insert(payload).select('id').single()
-      if (error) {
-        setError('Nu am putut salva. Verifică dacă emailul e deja folosit.')
-        return
-      }
-      employeeId = data.id
-    }
-
-    // scrie alocările pe cei 3 ani urmăriți acum (an real, nu relativ)
-    await Promise.all(
-      [
-        [YEAR_Y2, form.alloc_y2],
-        [YEAR_Y1, form.alloc_y1],
-        [YEAR_Y, form.alloc_y],
-      ].map(([year, days]) =>
-        supabase
-          .from('year_allocations')
-          .upsert(
-            { employee_id: employeeId, year, days: Number(days) || 0 },
-            { onConflict: 'employee_id,year' }
-          )
+  async function handleRollover() {
+    if (
+      !confirm(
+        `Avansezi soldurile TUTUROR angajaților la anul ${CURRENT_YEAR}? Recuperările nu sunt afectate — doar cele 3 categorii de solduri pe ani.`
       )
     )
-
-    cancelEdit()
+      return
+    setRollingOver(true)
+    setRolloverError('')
+    const { error } = await supabase.rpc('rollover_hr_profil_angajat')
+    setRollingOver(false)
+    if (error) {
+      setRolloverError('Nu am putut avansa anul. Încearcă din nou.')
+      return
+    }
     load()
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Ștergi acest angajat? Cererile lui existente rămân în istoric.')) return
-    await supabase.from('employees').delete().eq('id', id)
-    load()
+  const employeesNeedingRollover = angajati.filter((a) => {
+    const profil = getHrProfil(a)
+    return profil.an_referinta != null && profil.an_referinta < CURRENT_YEAR
+  })
+
+  const editingAngajat = angajati.find((a) => a.id === editingId) || null
+
+  return (
+    <div>
+      <p className="mb-4 text-sm text-slate-500">
+        Lista angajaților activi vine din Hub — adăugarea, editarea sau ștergerea unui angajat se
+        face acolo. Aici poți doar introduce datele specifice de HR (contract, solduri, vechime
+        anterioară) pentru fiecare.
+      </p>
+
+      {employeesNeedingRollover.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-800">
+            Soldurile pe ani ale {employeesNeedingRollover.length}{' '}
+            {employeesNeedingRollover.length === 1 ? 'angajat' : 'angajați'} sunt din anul trecut.
+            Avansează-le la {CURRENT_YEAR}: fiecare pierde soldul cel mai vechi (deja expirat),
+            reportează restul cu un an, iar anul curent pornește de la zilele de bază.
+          </p>
+          <button
+            onClick={handleRollover}
+            disabled={rollingOver}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 focus-ring"
+          >
+            <ArrowRight size={14} /> {rollingOver ? 'Se avansează…' : `Trece la anul ${CURRENT_YEAR}`}
+          </button>
+          {rolloverError && <p className="w-full text-xs text-rose-600">{rolloverError}</p>}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-slate-500">Se încarcă…</p>
+      ) : (
+        <div className="max-h-[520px] space-y-2 overflow-y-auto">
+          {angajati.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-ink">{a.nume_complet}</p>
+                <p className="text-xs text-slate-500">
+                  {a.department?.name || '—'} {a.position?.name ? `· ${a.position.name}` : ''}
+                  {a.email ? ` · ${a.email}` : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingId(a.id)}
+                className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 focus-ring"
+              >
+                <Pencil size={13} /> Editează / Introdu date HR
+              </button>
+            </div>
+          ))}
+          {angajati.length === 0 && <p className="text-sm text-slate-400">Niciun angajat activ găsit.</p>}
+        </div>
+      )}
+
+      {editingAngajat && (
+        <HrProfileEditor
+          angajat={editingAngajat}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null)
+            load()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function HrProfileEditor({ angajat, onClose, onSaved }) {
+  const existingProfil = Array.isArray(angajat.hr_profil_angajat)
+    ? angajat.hr_profil_angajat[0]
+    : angajat.hr_profil_angajat
+
+  const [form, setForm] = useState({
+    numar_contract: existingProfil?.numar_contract || '',
+    data_inceput_contract: existingProfil?.data_inceput_contract || '',
+    zile_concediu_baza_an: existingProfil?.zile_concediu_baza_an ?? 21,
+    sold_recuperari: existingProfil?.sold_recuperari ?? 0,
+    sold_an_minus_2: existingProfil?.sold_an_minus_2 ?? 0,
+    sold_an_minus_1: existingProfil?.sold_an_minus_1 ?? 0,
+    sold_an_curent: existingProfil?.sold_an_curent ?? 0,
+  })
+  const [vechime, setVechime] = useState(angajat.hr_vechime_anterioara || [])
+  const [newVechime, setNewVechime] = useState(emptyVechime)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+
+    const { error: profilError } = await supabase.from('hr_profil_angajat').upsert({
+      angajat_id: angajat.id,
+      numar_contract: form.numar_contract.trim() || null,
+      data_inceput_contract: form.data_inceput_contract || null,
+      zile_concediu_baza_an: Number(form.zile_concediu_baza_an) || 0,
+      sold_recuperari: Number(form.sold_recuperari) || 0,
+      sold_an_minus_2: Number(form.sold_an_minus_2) || 0,
+      sold_an_minus_1: Number(form.sold_an_minus_1) || 0,
+      sold_an_curent: Number(form.sold_an_curent) || 0,
+      // Editare manuală = soldurile sunt "la zi" pentru anul curent, ca să
+      // nu fie suprascrise de avansarea automată la anul nou.
+      an_referinta: CURRENT_YEAR,
+    })
+
+    setSaving(false)
+    if (profilError) {
+      setError('Nu am putut salva profilul HR.')
+      return
+    }
+    onSaved()
+  }
+
+  async function addVechime(e) {
+    e.preventDefault()
+    if (!newVechime.angajator.trim()) return
+    const { data, error } = await supabase
+      .from('hr_vechime_anterioara')
+      .insert({
+        angajat_id: angajat.id,
+        angajator: newVechime.angajator.trim(),
+        data_inceput: newVechime.data_inceput || null,
+        data_sfarsit: newVechime.data_sfarsit || null,
+        durata_luni: newVechime.durata_luni ? Number(newVechime.durata_luni) : null,
+      })
+      .select()
+      .single()
+    if (!error && data) {
+      setVechime((v) => [...v, data])
+      setNewVechime(emptyVechime)
+    }
+  }
+
+  async function removeVechime(id) {
+    await supabase.from('hr_vechime_anterioara').delete().eq('id', id)
+    setVechime((v) => v.filter((row) => row.id !== id))
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-      <form
-        onSubmit={handleSubmit}
-        className="h-fit space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
-      >
-        <h3 className="font-display text-lg font-semibold text-ink">
-          {editingId ? 'Editează angajat' : 'Adaugă angajat nou'}
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Nume complet</label>
-            <input
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Număr contract</label>
-            <input
-              value={form.contract_number}
-              onChange={(e) => setForm({ ...form, contract_number: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            Email <span className="text-slate-400">(pentru cont, opțional)</span>
-          </label>
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Departament</label>
-            <select
-              value={form.department_id}
-              onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-            >
-              <option value="">Fără departament</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            {departments.length === 0 && (
-              <p className="mt-1 text-xs text-amber-600">Adaugă din secțiunea "Liste prestabilite".</p>
-            )}
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Funcție</label>
-            <select
-              value={form.position_id}
-              onChange={(e) => setForm({ ...form, position_id: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-            >
-              <option value="">Fără funcție</option>
-              {positions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {positions.length === 0 && (
-              <p className="mt-1 text-xs text-amber-600">Adaugă din secțiunea "Liste prestabilite".</p>
-            )}
-          </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Zile de bază / an</label>
-          <input
-            type="number"
-            step="0.5"
-            value={form.base_annual_days}
-            onChange={(e) => setForm({ ...form, base_annual_days: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            Alocarea implicită folosită automat pentru un an care nu are încă un număr explicit
-            mai jos — de-asta un an nou (1 ianuarie) capătă automat această alocare, fără nicio
-            intervenție din partea ta.
-          </p>
+    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
+      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-display text-lg font-semibold text-ink">Date HR — {angajat.nume_complet}</h3>
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 focus-ring">
+            <XIcon size={16} />
+          </button>
         </div>
 
-        <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
-          <p className="text-xs font-semibold text-brand-800">Sold pe fiecare an (situația actuală)</p>
-          <p className="mt-0.5 text-xs text-brand-700">
-            Completează cu numerele exacte din Excel-ul actual, pentru fiecare an în parte.
-            Aplicația scade automat din ele pe măsură ce aprobi cereri noi.
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Recuperări</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Număr contract</label>
               <input
-                type="number"
-                step="0.5"
-                value={form.opening_recoveries}
-                onChange={(e) => setForm({ ...form, opening_recoveries: e.target.value })}
+                value={form.numar_contract}
+                onChange={(e) => setForm({ ...form, numar_contract: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Anul {YEAR_Y2} <span className="text-slate-400">(expiră 30 iun. {CURRENT_YEAR})</span>
-              </label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Data început contract</label>
               <input
-                type="number"
-                step="0.5"
-                value={form.alloc_y2}
-                onChange={(e) => setForm({ ...form, alloc_y2: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Anul {YEAR_Y1}</label>
-              <input
-                type="number"
-                step="0.5"
-                value={form.alloc_y1}
-                onChange={(e) => setForm({ ...form, alloc_y1: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Anul {YEAR_Y} <span className="text-slate-400">(curent)</span>
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                value={form.alloc_y}
-                onChange={(e) => setForm({ ...form, alloc_y: e.target.value })}
+                type="date"
+                value={form.data_inceput_contract || ''}
+                onChange={(e) => setForm({ ...form, data_inceput_contract: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
               />
             </div>
           </div>
-        </div>
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="flex gap-2 pt-1">
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 focus-ring"
-          >
-            {editingId ? <Save size={14} /> : <Plus size={14} />}
-            {editingId ? 'Salvează' : 'Adaugă'}
-          </button>
-          {editingId && (
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Zile de bază / an</label>
+            <input
+              type="number"
+              step="0.5"
+              value={form.zile_concediu_baza_an}
+              onChange={(e) => setForm({ ...form, zile_concediu_baza_an: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+            />
+          </div>
+
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+            <p className="text-xs font-semibold text-brand-800">Solduri (situația actuală)</p>
+            <p className="mt-0.5 text-xs text-brand-700">
+              Aceste solduri NU avansează automat la 1 ianuarie și NU expiră automat la 30 iunie —
+              trebuie actualizate manual, o dată pe an.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Recuperări</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={form.sold_recuperari}
+                  onChange={(e) => setForm({ ...form, sold_recuperari: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Anul {CURRENT_YEAR - 2} <span className="text-slate-400">(expiră 30 iun. {CURRENT_YEAR})</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={form.sold_an_minus_2}
+                  onChange={(e) => setForm({ ...form, sold_an_minus_2: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Anul {CURRENT_YEAR - 1}</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={form.sold_an_minus_1}
+                  onChange={(e) => setForm({ ...form, sold_an_minus_1: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Anul {CURRENT_YEAR} <span className="text-slate-400">(curent)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={form.sold_an_curent}
+                  onChange={(e) => setForm({ ...form, sold_an_curent: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold text-slate-600">Vechime anterioară</p>
+            <div className="space-y-1.5">
+              {vechime.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs"
+                >
+                  <span>
+                    {v.angajator}
+                    {v.data_inceput ? ` · ${v.data_inceput}` : ''}
+                    {v.data_sfarsit ? ` → ${v.data_sfarsit}` : ''}
+                    {v.durata_luni ? ` · ${v.durata_luni} luni` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeVechime(v.id)}
+                    className="rounded-full p-1 text-rose-500 hover:bg-rose-50 focus-ring"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              {vechime.length === 0 && (
+                <p className="text-xs text-slate-400">Nicio vechime anterioară adăugată.</p>
+              )}
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <input
+                placeholder="Angajator"
+                value={newVechime.angajator}
+                onChange={(e) => setNewVechime({ ...newVechime, angajator: e.target.value })}
+                className="col-span-2 rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus-ring sm:col-span-1"
+              />
+              <input
+                type="date"
+                value={newVechime.data_inceput}
+                onChange={(e) => setNewVechime({ ...newVechime, data_inceput: e.target.value })}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus-ring"
+              />
+              <input
+                type="date"
+                value={newVechime.data_sfarsit}
+                onChange={(e) => setNewVechime({ ...newVechime, data_sfarsit: e.target.value })}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus-ring"
+              />
+              <input
+                type="number"
+                placeholder="Luni"
+                value={newVechime.durata_luni}
+                onChange={(e) => setNewVechime({ ...newVechime, durata_luni: e.target.value })}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus-ring"
+              />
+            </div>
             <button
               type="button"
-              onClick={cancelEdit}
+              onClick={addVechime}
+              className="mt-2 flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 focus-ring"
+            >
+              <Plus size={13} /> Adaugă vechime
+            </button>
+          </div>
+
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 focus-ring"
+            >
+              <Save size={14} /> {saving ? 'Se salvează…' : 'Salvează'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
               className="flex items-center gap-1.5 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 focus-ring"
             >
-              <XIcon size={14} /> Anulează
+              <XIcon size={14} /> Închide
             </button>
-          )}
-        </div>
-      </form>
-
-      <div>
-        <h3 className="mb-3 font-display text-lg font-semibold text-ink">
-          Angajați ({employees.length})
-        </h3>
-        {loading ? (
-          <p className="text-sm text-slate-500">Se încarcă…</p>
-        ) : (
-          <div className="max-h-[420px] space-y-2 overflow-y-auto">
-            {employees.map((emp) => (
-              <div
-                key={emp.id}
-                className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-ink">{emp.full_name}</p>
-                  <p className="text-xs text-slate-500">
-                    {emp.department?.name || '—'} {emp.position?.name ? `· ${emp.position.name}` : ''} ·{' '}
-                    {emp.base_annual_days} zile/an
-                    {emp.contract_number ? ` · Contract ${emp.contract_number}` : ''}
-                    {emp.email ? ` · ${emp.email}` : ''}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => startEdit(emp)}
-                    className="rounded-full p-2 text-slate-500 hover:bg-slate-100 focus-ring"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(emp.id)}
-                    className="rounded-full p-2 text-rose-500 hover:bg-rose-50 focus-ring"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
-        )}
+        </form>
       </div>
     </div>
   )

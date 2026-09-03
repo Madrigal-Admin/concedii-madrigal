@@ -13,22 +13,19 @@ export default function OverviewTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data: employees }, { data: requests }, { data: recoveries }, { data: allocations }] =
-      await Promise.all([
-        supabase
-          .from('employees')
-          .select('*, department:departments(name), position:positions(name)')
-          .order('full_name'),
-        supabase.from('leave_requests').select('*').eq('status', 'approved'),
-        supabase.from('overtime_recoveries').select('*'),
-        supabase.from('year_allocations').select('*'),
-      ])
+    const [{ data: employees }, { data: requests }, { data: recoveries }] = await Promise.all([
+      supabase
+        .from('angajati')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*)')
+        .order('nume_complet'),
+      supabase.from('leave_requests').select('*').eq('status', 'approved'),
+      supabase.from('overtime_recoveries').select('*'),
+    ])
 
     const computed = (employees || []).map((emp) => {
-      const empRequests = (requests || []).filter((r) => r.employee_id === emp.id)
-      const empRecoveries = (recoveries || []).filter((r) => r.employee_id === emp.id)
-      const empAllocations = (allocations || []).filter((a) => a.employee_id === emp.id)
-      const balance = calculateBalance(emp, empRequests, empRecoveries, empAllocations)
+      const empRequests = (requests || []).filter((r) => r.angajat_id === emp.id)
+      const empRecoveries = (recoveries || []).filter((r) => r.angajat_id === emp.id)
+      const balance = calculateBalance(emp, empRequests, empRecoveries)
       return { emp, balance }
     })
     setRows(computed)
@@ -63,7 +60,7 @@ export default function OverviewTab() {
           <tbody>
             {rows.map(({ emp, balance }) => (
               <tr key={emp.id} className="border-b border-slate-100 last:border-0">
-                <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{emp.full_name}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{emp.nume_complet}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.department?.name || '—'}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.position?.name || '—'}</td>
                 <td className="px-4 py-3 text-right">{balance.recoveries}</td>

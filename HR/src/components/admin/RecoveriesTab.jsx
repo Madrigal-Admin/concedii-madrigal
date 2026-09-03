@@ -8,7 +8,6 @@ export default function RecoveriesTab() {
   const [employees, setEmployees] = useState([])
   const [recoveryEntries, setRecoveryEntries] = useState([])
   const [approvedRequests, setApprovedRequests] = useState([])
-  const [yearAllocations, setYearAllocations] = useState([])
   const [employeeId, setEmployeeId] = useState('')
   const [days, setDays] = useState('')
   const [note, setNote] = useState('')
@@ -23,19 +22,17 @@ export default function RecoveriesTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data: emps }, { data: recs }, { data: requests }, { data: allocations }] = await Promise.all([
+    const [{ data: emps }, { data: recs }, { data: requests }] = await Promise.all([
       supabase
-        .from('employees')
-        .select('*, department:departments(name), position:positions(name)')
-        .order('full_name'),
-      supabase.from('overtime_recoveries').select('*, employees(full_name)').order('created_at', { ascending: false }),
+        .from('angajati')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*)')
+        .order('nume_complet'),
+      supabase.from('overtime_recoveries').select('*, angajati(nume_complet)').order('created_at', { ascending: false }),
       supabase.from('leave_requests').select('*').eq('status', 'approved'),
-      supabase.from('year_allocations').select('*'),
     ])
     setEmployees(emps || [])
     setRecoveryEntries(recs || [])
     setApprovedRequests(requests || [])
-    setYearAllocations(allocations || [])
     setLoading(false)
   }
 
@@ -45,7 +42,7 @@ export default function RecoveriesTab() {
     if (!employeeId || !days) return setError('Alege angajatul și numărul de zile.')
 
     const { error } = await supabase.from('overtime_recoveries').insert({
-      employee_id: employeeId,
+      angajat_id: employeeId,
       days: Number(days),
       note: note || null,
     })
@@ -68,18 +65,17 @@ export default function RecoveriesTab() {
   const situation = useMemo(() => {
     return employees
       .map((emp) => {
-        const empRequests = approvedRequests.filter((r) => r.employee_id === emp.id)
-        const empRecoveries = recoveryEntries.filter((r) => r.employee_id === emp.id)
-        const empAllocations = yearAllocations.filter((a) => a.employee_id === emp.id)
-        const balance = calculateBalance(emp, empRequests, empRecoveries, empAllocations)
+        const empRequests = approvedRequests.filter((r) => r.angajat_id === emp.id)
+        const empRecoveries = recoveryEntries.filter((r) => r.angajat_id === emp.id)
+        const balance = calculateBalance(emp, empRequests, empRecoveries)
         return { emp, recoveries: balance.recoveries }
       })
-      .filter(({ emp }) => emp.full_name.toLowerCase().includes(search.trim().toLowerCase()))
-  }, [employees, approvedRequests, recoveryEntries, yearAllocations, search])
+      .filter(({ emp }) => emp.nume_complet.toLowerCase().includes(search.trim().toLowerCase()))
+  }, [employees, approvedRequests, recoveryEntries, search])
 
   function handleExportExcel() {
     const rows = situation.map(({ emp, recoveries }) => ({
-      Angajat: emp.full_name,
+      Angajat: emp.nume_complet,
       Departament: emp.department?.name || '',
       Funcție: emp.position?.name || '',
       Recuperări: recoveries,
@@ -109,7 +105,7 @@ export default function RecoveriesTab() {
             <option value="">Selectează…</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.full_name}
+                {e.nume_complet}
               </option>
             ))}
           </select>
@@ -182,7 +178,7 @@ export default function RecoveriesTab() {
               <tbody>
                 {situation.map(({ emp, recoveries }) => (
                   <tr key={emp.id} className="border-b border-slate-100 last:border-0">
-                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{emp.full_name}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{emp.nume_complet}</td>
                     <td className="px-4 py-2.5 text-slate-500">{emp.department?.name || '—'}</td>
                     <td className="px-4 py-2.5 text-slate-500">{emp.position?.name || '—'}</td>
                     <td className="px-4 py-2.5 text-right font-semibold">{recoveries}</td>
@@ -217,7 +213,7 @@ export default function RecoveriesTab() {
               >
                 <div>
                   <p className="font-medium text-ink">
-                    {r.employees?.full_name || '—'} · {r.days} zile
+                    {r.angajati?.nume_complet || '—'} · {r.days} zile
                   </p>
                   <p className="text-xs text-slate-400">
                     {formatDate(r.created_at)} {r.note ? `· ${r.note}` : ''}

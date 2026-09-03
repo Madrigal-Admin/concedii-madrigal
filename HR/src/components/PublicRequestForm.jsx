@@ -35,8 +35,8 @@ export default function PublicRequestForm({ employee }) {
     setStatus('sending')
 
     const { error } = await supabase.from('leave_requests').insert({
-      employee_id: employee.id,
-      employee_name: employee.full_name,
+      angajat_id: employee.id,
+      employee_name: employee.nume_complet,
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
@@ -80,7 +80,7 @@ export default function PublicRequestForm({ employee }) {
     <div className="mx-auto max-w-md">
       <h1 className="font-display text-2xl font-semibold text-ink">Cerere de concediu</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Trimiți cererea în numele tău, {employee.full_name.split(' ')[0]}.
+        Trimiți cererea în numele tău, {employee.nume_complet.split(' ')[0]}.
       </p>
       <p className="mt-1 text-xs text-slate-400">
         Pentru concediu medical, te rugăm să contactezi direct HR.

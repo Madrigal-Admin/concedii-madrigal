@@ -102,14 +102,13 @@ function june30(year) {
   return new Date(year, 5, 30, 23, 59, 59)
 }
 
-// Alocarea pentru un an calendaristic REAL. Dacă există un rând explicit în
-// year_allocations pentru acel an, îl folosește; altfel presupune alocarea
-// de bază a angajatului — exact mecanismul care face ca un an nou să capete
-// automat, pe 1 ianuarie, o alocare implicită, fără nicio intervenție manuală.
-function allocationForYear(yearAllocations, employee, year) {
-  const row = (yearAllocations || []).find((a) => a.year === year)
-  if (row) return Number(row.days) || 0
-  return Number(employee.base_annual_days) || 0
+// hr_profil_angajat vine ca obiect unic sau ca array cu un element, în
+// funcție de cum a fost făcut join-ul Supabase — normalizăm aici o singură
+// dată, ca restul fișierului (și alte componente) să nu se mai gândească
+// la asta.
+export function getHrProfil(employee) {
+  const p = employee?.hr_profil_angajat
+  return (Array.isArray(p) ? p[0] : p) || {}
 }
 
 function usedForYear(approvedRequests, year) {
@@ -118,18 +117,24 @@ function usedForYear(approvedRequests, year) {
 
 /**
  * Calculează soldul unui angajat, defalcat pe categorii, ancorat de ANI
- * CALENDARISTICI REALI — nu relativ la "azi". Asta face ca:
- *  - pe 1 ianuarie, anul curent să treacă automat mai departe
- *  - pe 30 iunie, zilele din urmă cu 2 ani să expire automat
- * fără nicio acțiune manuală.
+ * CALENDARISTICI REALI — nu relativ la "azi".
  *
- * @param {object} employee - rândul din tabela employees (are base_annual_days, opening_recoveries)
+ * Expirarea la 30 iunie a soldului de-acum-2-ani rămâne complet automată
+ * (y2Expired mai jos), exact ca înainte.
+ *
+ * Spre deosebire de vechiul mecanism (year_allocations), avansarea anuală a
+ * celor 3 solduri (hr_profil_angajat.sold_an_minus_2/1/curent) NU se mai
+ * întâmplă singură la 1 ianuarie — un admin trebuie să apese butonul
+ * "Trece la anul nou" din tab-ul Angajați (vezi rollover_hr_profil_angajat
+ * în migration_hub_hr_faza6b_rollover_an.sql).
+ *
+ * @param {object} employee - rândul din tabela angajati, cu join hr_profil_angajat(*)
  * @param {array} approvedRequests - cererile APROBATE ale angajatului (cu coloana "deduction")
  * @param {array} recoveries - rândurile din overtime_recoveries ale angajatului
- * @param {array} yearAllocations - rândurile din year_allocations ale angajatului
  * @param {Date} asOf - data de referință (implicit azi)
  */
-export function calculateBalance(employee, approvedRequests, recoveries, yearAllocations, asOf = new Date()) {
+export function calculateBalance(employee, approvedRequests, recoveries, asOf = new Date()) {
+  const profil = getHrProfil(employee)
   const currentYear = asOf.getFullYear()
   const yearY = currentYear
   const yearY1 = currentYear - 1
@@ -137,7 +142,7 @@ export function calculateBalance(employee, approvedRequests, recoveries, yearAll
 
   const y2Expired = asOf > june30(currentYear)
 
-  const openingRecoveries = Number(employee.opening_recoveries) || 0
+  const openingRecoveries = Number(profil.sold_recuperari) || 0
   const totalRecoveriesEarned = openingRecoveries + recoveries.reduce((s, r) => s + Number(r.days || 0), 0)
   const usedRecoveries = approvedRequests.reduce((s, r) => s + Number((r.deduction && r.deduction.recoveries) || 0), 0)
 
@@ -145,9 +150,9 @@ export function calculateBalance(employee, approvedRequests, recoveries, yearAll
   const usedY1 = usedForYear(approvedRequests, yearY1)
   const usedY = usedForYear(approvedRequests, yearY)
 
-  const allocY2 = allocationForYear(yearAllocations, employee, yearY2)
-  const allocY1 = allocationForYear(yearAllocations, employee, yearY1)
-  const allocY = allocationForYear(yearAllocations, employee, yearY)
+  const allocY2 = Number(profil.sold_an_minus_2) || 0
+  const allocY1 = Number(profil.sold_an_minus_1) || 0
+  const allocY = Number(profil.sold_an_curent) || 0
 
   const poolRecoveries = totalRecoveriesEarned - usedRecoveries
   const poolY2 = (y2Expired ? 0 : allocY2) - usedY2

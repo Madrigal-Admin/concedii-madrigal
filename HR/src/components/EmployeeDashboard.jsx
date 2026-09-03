@@ -13,7 +13,6 @@ export default function EmployeeDashboard({ employee }) {
   const [requests, setRequests] = useState([])
   const [certificateRequests, setCertificateRequests] = useState([])
   const [recoveries, setRecoveries] = useState([])
-  const [yearAllocations, setYearAllocations] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -22,31 +21,29 @@ export default function EmployeeDashboard({ employee }) {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: reqs }, { data: certReqs }, { data: recs }, { data: allocations }] = await Promise.all([
+    const [{ data: reqs }, { data: certReqs }, { data: recs }] = await Promise.all([
       supabase
         .from('leave_requests')
         .select('*')
-        .eq('employee_id', employee.id)
+        .eq('angajat_id', employee.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('certificate_requests')
         .select('*')
-        .eq('employee_id', employee.id)
+        .eq('angajat_id', employee.id)
         .order('created_at', { ascending: false }),
-      supabase.from('overtime_recoveries').select('*').eq('employee_id', employee.id),
-      supabase.from('year_allocations').select('*').eq('employee_id', employee.id),
+      supabase.from('overtime_recoveries').select('*').eq('angajat_id', employee.id),
     ])
     setRequests(reqs || [])
     setCertificateRequests(certReqs || [])
     setRecoveries(recs || [])
-    setYearAllocations(allocations || [])
     setLoading(false)
   }
 
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   const approved = requests.filter((r) => r.status === 'approved')
-  const balance = calculateBalance(employee, approved, recoveries, yearAllocations)
+  const balance = calculateBalance(employee, approved, recoveries)
 
   const cards = [
     { label: 'Recuperări', value: balance.recoveries, sub: 'ore suplimentare' },
@@ -67,7 +64,7 @@ export default function EmployeeDashboard({ employee }) {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-2xl font-semibold text-ink">
-        Bună, {employee.full_name.split(' ')[0]}
+        Bună, {employee.nume_complet.split(' ')[0]}
       </h1>
       <p className="mt-1 text-sm text-slate-500">
         {employee.department?.name} {employee.position?.name ? `· ${employee.position.name}` : ''}

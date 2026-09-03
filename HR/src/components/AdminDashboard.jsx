@@ -15,7 +15,7 @@ const ALL_TABS = [
   { key: 'settings', label: 'Setări', fullAdminOnly: true },
 ]
 
-export default function AdminDashboard({ role, currentEmployee }) {
+export default function AdminDashboard({ role }) {
   const [tab, setTab] = useState('approvals')
   const isFullAdmin = role === 'full_admin'
   const tabs = ALL_TABS.filter((t) => !t.fullAdminOnly || isFullAdmin)
@@ -44,7 +44,7 @@ export default function AdminDashboard({ role, currentEmployee }) {
         {tab === 'recoveries' && <RecoveriesTab />}
         {tab === 'overview' && <OverviewTab />}
         {tab === 'reports' && <ReportsTab />}
-        {tab === 'settings' && isFullAdmin && <SettingsTab currentEmployee={currentEmployee} />}
+        {tab === 'settings' && isFullAdmin && <SettingsTab />}
       </div>
     </div>
   )

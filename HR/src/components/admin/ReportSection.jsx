@@ -23,9 +23,9 @@ export default function ReportSection() {
     setLoading(true)
     const [{ data: emps }, { data: reqs }] = await Promise.all([
       supabase
-        .from('employees')
+        .from('angajati')
         .select('*, department:departments(name), position:positions(name)')
-        .order('full_name'),
+        .order('nume_complet'),
       supabase.from('leave_requests').select('*').order('start_date', { ascending: false }),
     ])
     setEmployees(emps || [])
@@ -54,7 +54,7 @@ export default function ReportSection() {
 
   const filtered = useMemo(() => {
     return requests.filter((r) => {
-      if (selectedIds.size > 0 && !selectedIds.has(r.employee_id)) return false
+      if (selectedIds.size > 0 && !selectedIds.has(r.angajat_id)) return false
       if (startDate && r.end_date < startDate) return false
       if (endDate && r.start_date > endDate) return false
       if (leaveType && r.leave_type !== leaveType) return false
@@ -64,7 +64,7 @@ export default function ReportSection() {
 
   function rowsForExport() {
     return filtered.map((r) => {
-      const emp = employeeMap.get(r.employee_id)
+      const emp = employeeMap.get(r.angajat_id)
       return {
         Angajat: r.employee_name,
         Departament: emp?.department?.name || '',
@@ -249,7 +249,7 @@ export default function ReportSection() {
             </thead>
             <tbody>
               {filtered.map((r) => {
-                const emp = employeeMap.get(r.employee_id)
+                const emp = employeeMap.get(r.angajat_id)
                 return (
                   <tr key={r.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-3 py-2 font-medium text-ink">{r.employee_name}</td>

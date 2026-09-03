@@ -17,14 +17,14 @@ export default function EmployeeMultiSelect({ employees, selectedIds, onToggle, 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return employees
-    return employees.filter((e) => e.full_name.toLowerCase().includes(q))
+    return employees.filter((e) => e.nume_complet.toLowerCase().includes(q))
   }, [employees, search])
 
   const label =
     selectedIds.size === 0
       ? 'Toți angajații'
       : selectedIds.size === 1
-      ? employees.find((e) => selectedIds.has(e.id))?.full_name || '1 angajat'
+      ? employees.find((e) => selectedIds.has(e.id))?.nume_complet || '1 angajat'
       : `${selectedIds.size} angajați selectați`
 
   return (
@@ -74,7 +74,7 @@ export default function EmployeeMultiSelect({ employees, selectedIds, onToggle, 
                   onChange={() => onToggle(emp.id)}
                   className="rounded"
                 />
-                {emp.full_name}
+                {emp.nume_complet}
               </label>
             ))}
           </div>
