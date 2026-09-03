@@ -2,7 +2,7 @@ import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import { formatDate } from './leaveCalculations'
 
-const TEMPLATE_URL = '/templates/cerere-concediu-template.docx'
+const TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/cerere-concediu-template.docx`
 
 // Tipurile de concediu acoperite de acest template (Medical se justifică prin
 // certificat medical, nu prin acest formular, deci nu are echivalent aici).

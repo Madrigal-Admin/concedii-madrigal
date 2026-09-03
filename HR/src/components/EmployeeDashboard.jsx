@@ -9,7 +9,7 @@ import {
   CERTIFICATE_STATUS_STYLES,
 } from '../lib/leaveCalculations'
 
-export default function EmployeeDashboard({ employee }) {
+export default function EmployeeDashboard({ employee, onNavigate }) {
   const [requests, setRequests] = useState([])
   const [certificateRequests, setCertificateRequests] = useState([])
   const [recoveries, setRecoveries] = useState([])
@@ -87,6 +87,21 @@ export default function EmployeeDashboard({ employee }) {
             <p className="text-xs text-slate-400">{c.sub}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          onClick={() => onNavigate('leave')}
+          className="rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 focus-ring"
+        >
+          Cerere concediu
+        </button>
+        <button
+          onClick={() => onNavigate('certificate')}
+          className="rounded-full border border-brand-300 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 focus-ring"
+        >
+          Cerere adeverințe
+        </button>
       </div>
 
       <h2 className="mt-8 font-display text-lg font-semibold text-ink">Cererile mele</h2>

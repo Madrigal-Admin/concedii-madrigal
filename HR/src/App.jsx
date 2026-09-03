@@ -110,11 +110,16 @@ export default function App() {
         {hasEmployeeAccess && view === 'certificate' && employee && <CertificateRequestForm employee={employee} />}
 
         {isAdmin && view === 'admin' && <AdminDashboard role={role} />}
-        {hasEmployeeAccess && view === 'employee' && employee && <EmployeeDashboard employee={employee} />}
+        {hasEmployeeAccess && view === 'employee' && employee && (
+          <EmployeeDashboard employee={employee} onNavigate={setView} />
+        )}
       </main>
 
       <footer className="site-footer">
-        <p>Madrigal — Documente Resurse Umane</p>
+        <p>
+          Probleme sau întrebări?{' '}
+          <a href="mailto:digitalizare@madrigal.ro">digitalizare@madrigal.ro</a>
+        </p>
       </footer>
     </div>
   )

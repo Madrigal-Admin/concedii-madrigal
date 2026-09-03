@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, ArrowLeft } from 'lucide-react'
 
 export default function Navbar({ view, setView, role, hasEmployeeAccess, displayName, roleLabel, onLogout }) {
   const isAdmin = role === 'full_admin' || role === 'limited_admin'
@@ -16,35 +16,25 @@ export default function Navbar({ view, setView, role, hasEmployeeAccess, display
         </button>
 
         <nav className="flex flex-wrap items-center gap-2 text-sm">
+          <a
+            href="/"
+            className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
+          >
+            <ArrowLeft size={15} />
+            Hub
+          </a>
+
           {hasEmployeeAccess && (
-            <>
-              <button
-                onClick={() => setView('leave')}
-                className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
-                  view === 'leave' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Cerere concediu
-              </button>
-
-              <button
-                onClick={() => setView('certificate')}
-                className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
-                  view === 'certificate' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Cerere adeverințe
-              </button>
-
-              <button
-                onClick={() => setView('employee')}
-                className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
-                  view === 'employee' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Panoul meu
-              </button>
-            </>
+            <button
+              onClick={() => setView('employee')}
+              className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
+                view === 'employee' || view === 'leave' || view === 'certificate'
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Panoul meu
+            </button>
           )}
 
           {isAdmin && (
