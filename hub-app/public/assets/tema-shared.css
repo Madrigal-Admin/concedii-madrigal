@@ -1,0 +1,89 @@
+/* =========================================================================
+   Tema Madrigal — partajată între toate tool-urile (Hub, HR, Invitații).
+   Se include prin <link rel="stylesheet" href="/assets/tema-shared.css">
+   în index.html-ul fiecărui tool. Nu se editează per-tool — orice
+   modificare aici se vede peste tot.
+   ========================================================================= */
+
+:root {
+  --madrigal-accent: #4f46e5;
+  --madrigal-accent-hover: #4338ca;
+  --madrigal-bg: #f8fafc;
+  --madrigal-text: #1e293b;
+  --madrigal-text-secondary: #64748b;
+  --madrigal-border: #e2e8f0;
+}
+
+.site-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--madrigal-border);
+}
+
+.site-header__inner {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.site-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.site-header__logo {
+  height: 36px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.site-header__text h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--madrigal-text);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.site-header__text p {
+  font-size: 0.8125rem;
+  color: var(--madrigal-text-secondary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-footer {
+  border-top: 1px solid var(--madrigal-border);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.site-footer p {
+  font-size: 0.8125rem;
+  color: var(--madrigal-text-secondary);
+}
+
+.site-footer a {
+  color: var(--madrigal-accent);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Pe mobil, textul de întâmpinare se ascunde dacă nu încape — logo-ul și
+   acțiunile (ex. Deconectare) rămân prioritare */
+@media (max-width: 480px) {
+  .site-header__text p {
+    display: none;
+  }
+}
