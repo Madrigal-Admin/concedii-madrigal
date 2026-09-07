@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
@@ -6,7 +7,7 @@ import SiteFooter from './SiteFooter'
 const TOOLS = [
   {
     tool: 'hr',
-    name: 'HR — Concedii',
+    name: 'Resurse Umane',
     description: 'Cereri de concediu, adeverințe, solduri.',
     href: '/HR/',
   },
@@ -25,14 +26,19 @@ export default function Dashboard({ angajat, accesTooluri, isHubAdmin, onOpenAdm
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
         title="Hub Madrigal"
-        subtitle={`Bun venit, ${angajat.nume_complet}`}
         right={
-          <button
-            onClick={onSignOut}
-            className="text-sm text-slate-500 hover:text-slate-700"
-          >
-            Deconectare
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
+              {angajat.nume_complet}
+            </span>
+            <button
+              onClick={onSignOut}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100 focus-ring transition"
+              title="Deconectare"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
         }
       />
 

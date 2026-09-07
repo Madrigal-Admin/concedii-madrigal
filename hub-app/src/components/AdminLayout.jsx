@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LogOut } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
@@ -11,7 +12,7 @@ const SECTIONS = [
   { key: 'departamente', label: 'Departamente & Funcții' },
 ]
 
-export default function AdminLayout({ onBackToDashboard }) {
+export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
   const [active, setActive] = useState('angajati')
 
   return (
@@ -20,12 +21,26 @@ export default function AdminLayout({ onBackToDashboard }) {
         title="Hub Madrigal"
         subtitle="Administrare"
         right={
-          <button
-            onClick={onBackToDashboard}
-            className="text-sm bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap"
-          >
-            ← Înapoi la tablou
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBackToDashboard}
+              className="text-sm bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+            >
+              ← Înapoi la tablou
+            </button>
+            {angajat && (
+              <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
+                {angajat.nume_complet}
+              </span>
+            )}
+            <button
+              onClick={onSignOut}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100 focus-ring transition"
+              title="Deconectare"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
         }
       />
 

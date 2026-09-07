@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Concedii Madrigal</title>
+    <script>
+      // Legăturile către logo-ul și tema partajate trăiesc la rădăcina
+      // reală a site-ului (/assets/...), nu sub /HR/. Scrise așa (ca șir
+      // de caractere, în JS), Vite nu le mai "rescrie" greșit din cauza
+      // base:'/HR/'. document.write, aici, în <head>, e execuție sincronă,
+      // înainte de randare — deci nu mai apare niciun glitch vizual.
+      document.write(
+        '<link rel="icon" type="image/png" href="' + window.location.origin + '/assets/logo-madrigal.png">' +
+        '<link rel="stylesheet" href="' + window.location.origin + '/assets/tema-shared.css">'
+      )
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
+import Sidebar from './components/Sidebar'
 import PublicRequestForm from './components/PublicRequestForm'
 import CertificateRequestForm from './components/CertificateRequestForm'
 import AdminDashboard from './components/AdminDashboard'
@@ -85,35 +86,33 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
-      <Navbar
-        view={view}
-        setView={setView}
-        role={role}
-        hasEmployeeAccess={hasEmployeeAccess}
-        displayName={displayName}
-        roleLabel={roleLabel}
-        onLogout={handleLogout}
-      />
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar displayName={displayName} roleLabel={roleLabel} onLogout={handleLogout} />
 
-      <main className="mx-auto max-w-5xl px-5 py-10">
-        {checkingRole && <p className="text-sm text-slate-500">Se verifică contul…</p>}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {isAdmin && <Sidebar view={view} onSelect={setView} />}
 
-        {!checkingRole && role === 'unknown' && (
-          <div className="mx-auto max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-            Contul tău este autentificat, dar nu este asociat niciunui angajat din Hub. Contactează
-            un administrator ca să îți verifice contul.
+        <main className="flex-1 p-6 md:p-8 min-w-0">
+          <div className="mx-auto max-w-5xl">
+            {checkingRole && <p className="text-sm text-slate-500">Se verifică contul…</p>}
+
+            {!checkingRole && role === 'unknown' && (
+              <div className="mx-auto max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+                Contul tău este autentificat, dar nu este asociat niciunui angajat din Hub. Contactează
+                un administrator ca să îți verifice contul.
+              </div>
+            )}
+
+            {hasEmployeeAccess && view === 'leave' && employee && <PublicRequestForm employee={employee} />}
+            {hasEmployeeAccess && view === 'certificate' && employee && <CertificateRequestForm employee={employee} />}
+
+            {isAdmin && view === 'admin' && <AdminDashboard role={role} />}
+            {hasEmployeeAccess && view === 'employee' && employee && (
+              <EmployeeDashboard employee={employee} onNavigate={setView} />
+            )}
           </div>
-        )}
-
-        {hasEmployeeAccess && view === 'leave' && employee && <PublicRequestForm employee={employee} />}
-        {hasEmployeeAccess && view === 'certificate' && employee && <CertificateRequestForm employee={employee} />}
-
-        {isAdmin && view === 'admin' && <AdminDashboard role={role} />}
-        {hasEmployeeAccess && view === 'employee' && employee && (
-          <EmployeeDashboard employee={employee} onNavigate={setView} />
-        )}
-      </main>
+        </main>
+      </div>
 
       <footer className="site-footer">
         <p>

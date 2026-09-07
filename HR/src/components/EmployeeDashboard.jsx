@@ -62,7 +62,7 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <h1 className="font-display text-2xl font-semibold text-ink">
         Bună, {employee.nume_complet.split(' ')[0]}
       </h1>

@@ -5,13 +5,15 @@ import RecoveriesTab from './admin/RecoveriesTab'
 import OverviewTab from './admin/OverviewTab'
 import ReportsTab from './admin/ReportsTab'
 import SettingsTab from './admin/SettingsTab'
+import VechimeTab from './admin/VechimeTab'
 
 const ALL_TABS = [
   { key: 'approvals', label: 'Aprobări concedii' },
   { key: 'certificates', label: 'Cereri adeverințe' },
-  { key: 'recoveries', label: 'Recuperări' },
+  { key: 'recoveries', label: 'Gestiune Recuperări' },
+  { key: 'reports', label: 'Rapoarte cereri' },
+  { key: 'vechime', label: 'Centralizator Vechime', fullAdminOnly: true },
   { key: 'overview', label: 'Privire generală' },
-  { key: 'reports', label: 'Rapoarte' },
   { key: 'settings', label: 'Setări', fullAdminOnly: true },
 ]
 
@@ -21,7 +23,7 @@ export default function AdminDashboard({ role }) {
   const tabs = ALL_TABS.filter((t) => !t.fullAdminOnly || isFullAdmin)
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <h1 className="font-display text-2xl font-semibold text-ink">Panou Admin</h1>
 
       <div className="mt-5 flex flex-wrap gap-1.5 border-b border-slate-200 pb-3">
@@ -42,9 +44,10 @@ export default function AdminDashboard({ role }) {
         {tab === 'approvals' && <ApprovalsTab />}
         {tab === 'certificates' && <CertificateRequestsTab />}
         {tab === 'recoveries' && <RecoveriesTab />}
-        {tab === 'overview' && <OverviewTab />}
         {tab === 'reports' && <ReportsTab />}
+        {tab === 'vechime' && isFullAdmin && <VechimeTab />}
         {tab === 'settings' && isFullAdmin && <SettingsTab />}
+        {tab === 'overview' && <OverviewTab />}
       </div>
     </div>
   )

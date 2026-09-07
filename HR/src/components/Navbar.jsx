@@ -1,19 +1,16 @@
 import { LogOut, ArrowLeft } from 'lucide-react'
 
-export default function Navbar({ view, setView, role, hasEmployeeAccess, displayName, roleLabel, onLogout }) {
-  const isAdmin = role === 'full_admin' || role === 'limited_admin'
-  const homeView = isAdmin ? 'admin' : 'employee'
-
+export default function Navbar({ displayName, roleLabel, onLogout }) {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <button onClick={() => setView(homeView)} className="site-header__brand text-left focus-ring rounded">
+        <div className="site-header__brand">
           <img src="/assets/logo-madrigal.png" alt="Madrigal" className="site-header__logo" />
           <div className="site-header__text">
             <h1>Concedii &amp; Adeverințe</h1>
             <p>Resurse Umane — Corul Madrigal</p>
           </div>
-        </button>
+        </div>
 
         <nav className="flex flex-wrap items-center gap-2 text-sm">
           <a
@@ -23,30 +20,6 @@ export default function Navbar({ view, setView, role, hasEmployeeAccess, display
             <ArrowLeft size={15} />
             Hub
           </a>
-
-          {hasEmployeeAccess && (
-            <button
-              onClick={() => setView('employee')}
-              className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
-                view === 'employee' || view === 'leave' || view === 'certificate'
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Panoul meu
-            </button>
-          )}
-
-          {isAdmin && (
-            <button
-              onClick={() => setView('admin')}
-              className={`rounded-full px-3 py-1.5 font-medium focus-ring transition ${
-                view === 'admin' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Panou Admin
-            </button>
-          )}
 
           {displayName && (
             <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">

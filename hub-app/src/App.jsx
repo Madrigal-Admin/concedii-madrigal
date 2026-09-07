@@ -98,7 +98,13 @@ export default function App() {
   const isHubAdmin = accesTooluri.some((a) => a.tool === 'hub' && a.rol === 'admin')
 
   if (view === 'admin' && isHubAdmin) {
-    return <AdminLayout onBackToDashboard={() => setView('dashboard')} />
+    return (
+      <AdminLayout
+        angajat={angajat}
+        onBackToDashboard={() => setView('dashboard')}
+        onSignOut={handleSignOut}
+      />
+    )
   }
 
   return (
