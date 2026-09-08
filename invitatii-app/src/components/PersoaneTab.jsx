@@ -17,6 +17,7 @@ const EMPTY_FORM = {
 
 export default function PersoaneTab() {
   const [persoane, setPersoane] = useState([])
+  const [istoricMap, setIstoricMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -24,6 +25,8 @@ export default function PersoaneTab() {
   const [error, setError] = useState('')
   const [showImport, setShowImport] = useState(false)
   const [cautare, setCautare] = useState('')
+  const [filtruCategorie, setFiltruCategorie] = useState('')
+  const [istoricPersoana, setIstoricPersoana] = useState(null)
 
   useEffect(() => {
     load()
@@ -31,8 +34,21 @@ export default function PersoaneTab() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('persoane').select('*').order('nume')
+    const [{ data }, { data: invitatiiRows }] = await Promise.all([
+      supabase.from('persoane').select('*').order('nume'),
+      supabase.from('invitatii').select('persoana_id, prezent'),
+    ])
+
+    const map = {}
+    for (const r of invitatiiRows || []) {
+      if (!r.persoana_id) continue
+      if (!map[r.persoana_id]) map[r.persoana_id] = { invitat: 0, prezent: 0 }
+      map[r.persoana_id].invitat += 1
+      if (r.prezent) map[r.persoana_id].prezent += 1
+    }
+
     setPersoane(data || [])
+    setIstoricMap(map)
     setLoading(false)
   }
 
@@ -91,14 +107,15 @@ export default function PersoaneTab() {
 
   const filtrate = persoane.filter((p) => {
     const q = cautare.toLowerCase()
-    return (
+    const matchQ =
       !q ||
       p.nume?.toLowerCase().includes(q) ||
       p.prenume?.toLowerCase().includes(q) ||
       p.email?.toLowerCase().includes(q) ||
       p.institutie?.toLowerCase().includes(q) ||
       p.categorie?.toLowerCase().includes(q)
-    )
+    const matchCategorie = !filtruCategorie || p.categorie === filtruCategorie
+    return matchQ && matchCategorie
   })
 
   return (
@@ -209,12 +226,26 @@ export default function PersoaneTab() {
         </div>
       </form>
 
-      <input
-        value={cautare}
-        onChange={(e) => setCautare(e.target.value)}
-        placeholder="Caută după nume, email, instituție..."
-        className="w-full sm:w-80 mb-3 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-      />
+      <div className="mb-3 flex flex-wrap gap-3">
+        <input
+          value={cautare}
+          onChange={(e) => setCautare(e.target.value)}
+          placeholder="Caută după nume, email, instituție..."
+          className="w-full sm:w-80 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+        <select
+          value={filtruCategorie}
+          onChange={(e) => setFiltruCategorie(e.target.value)}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        >
+          <option value="">Toate categoriile</option>
+          {CATEGORII.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {loading ? (
         <p className="text-sm text-slate-500">Se încarcă...</p>
@@ -228,6 +259,7 @@ export default function PersoaneTab() {
                 <th className="px-4 py-3 font-medium">Funcție</th>
                 <th className="px-4 py-3 font-medium">Categorie</th>
                 <th className="px-4 py-3 font-medium">Abonat</th>
+                <th className="px-4 py-3 font-medium">Evenimente</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -256,7 +288,14 @@ export default function PersoaneTab() {
                       <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Nu</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-slate-600">{istoricMap[p.id]?.invitat || 0}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => setIstoricPersoana(p)}
+                      className="text-slate-500 text-xs hover:underline mr-3"
+                    >
+                      Vezi istoric
+                    </button>
                     <button onClick={() => startEdit(p)} className="text-accent text-sm hover:underline mr-3">
                       <Pencil size={13} className="inline" />
                     </button>
@@ -268,7 +307,7 @@ export default function PersoaneTab() {
               ))}
               {filtrate.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
                     Nicio persoană găsită.
                   </td>
                 </tr>
@@ -279,8 +318,86 @@ export default function PersoaneTab() {
       )}
 
       {showImport && <ImportCsvModal onClose={() => setShowImport(false)} onImported={load} />}
+      {istoricPersoana && (
+        <IstoricModal persoana={istoricPersoana} onClose={() => setIstoricPersoana(null)} />
+      )}
     </div>
   )
+}
+
+function IstoricModal({ persoana, onClose }) {
+  const [istoric, setIstoric] = useState(null)
+
+  useEffect(() => {
+    supabase
+      .from('invitatii')
+      .select('status_rsvp, prezent, evenimente(nume, data)')
+      .eq('persoana_id', persoana.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setIstoric(data || []))
+  }, [persoana.id])
+
+  const totalInvitat = istoric?.length || 0
+  const totalPrezent = istoric?.filter((i) => i.prezent).length || 0
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-800">
+            {persoana.prenume} {persoana.nume}
+          </h3>
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
+            <XIcon size={16} />
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-slate-400">{persoana.email}</p>
+
+        {istoric === null ? (
+          <p className="text-sm text-slate-400">Se încarcă...</p>
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-slate-600">
+              Invitat la <strong>{totalInvitat}</strong> evenimente, prezent la <strong>{totalPrezent}</strong>.
+            </p>
+            {istoric.length === 0 ? (
+              <p className="text-sm text-slate-400">Nicio invitație încă.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {istoric.map((i, idx) => {
+                  const badge = RSVP_LABELS[i.status_rsvp] || RSVP_LABELS.in_asteptare
+                  return (
+                    <div key={idx} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm">
+                      <div>
+                        <p className="text-slate-800">{i.evenimente?.nume}</p>
+                        <p className="text-xs text-slate-400">
+                          {i.evenimente?.data
+                            ? new Date(i.evenimente.data).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}>{badge.label}</span>
+                        {i.prezent && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">Prezent</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const RSVP_LABELS = {
+  confirmat: { label: 'Confirmat', className: 'bg-green-50 text-green-700' },
+  refuzat: { label: 'Refuzat', className: 'bg-rose-50 text-rose-600' },
+  in_asteptare: { label: 'În așteptare', className: 'bg-amber-50 text-amber-700' },
 }
 
 const CSV_COLOANE = ['nume', 'prenume', 'email', 'institutie', 'functie', 'categorie']
