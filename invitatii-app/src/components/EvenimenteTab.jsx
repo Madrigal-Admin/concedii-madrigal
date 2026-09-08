@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Save, X as XIcon, Send } from 'lucide-react'
+import { Pencil, Save, X as XIcon, Send, Upload, Copy } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { CATEGORII } from './PersoaneTab'
 
@@ -184,7 +184,7 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
 
     const { data: persoane, error: errPersoane } = await supabase
       .from('persoane')
-      .select('id')
+      .select('id, nume, prenume, email')
       .in('categorie', selectate)
       .eq('abonat_invitatii', true)
 
@@ -204,7 +204,7 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
 
     if (deInvitat.length === 0) {
       setGenerating(false)
-      setRezultat({ create: 0, deja: persoane.length })
+      setRezultat({ create: 0, deja: persoane.length, linkuri: [] })
       return
     }
 
@@ -214,7 +214,7 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
       sursa: 'trimitere',
     }))
 
-    const { error: errInsert } = await supabase.from('invitatii').insert(payload)
+    const { data: create, error: errInsert } = await supabase.from('invitatii').insert(payload).select('token, persoana_id')
     setGenerating(false)
 
     if (errInsert) {
@@ -222,8 +222,12 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
       return
     }
 
-    setRezultat({ create: deInvitat.length, deja: persoane.length - deInvitat.length })
-    onDone()
+    const linkuri = create.map((row) => {
+      const p = deInvitat.find((x) => x.id === row.persoana_id)
+      return `${p.prenume} ${p.nume} <${p.email}> — ${window.location.origin}/invitatii/?rsvp=${row.token}`
+    })
+
+    setRezultat({ create: deInvitat.length, deja: persoane.length - deInvitat.length, linkuri })
   }
 
   return (
@@ -260,10 +264,31 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
         {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
 
         {rezultat ? (
-          <p className="mb-4 text-sm text-green-700">
-            {rezultat.create} invitații noi generate
-            {rezultat.deja > 0 ? ` (${rezultat.deja} erau deja invitați, nu s-au dublat)` : ''}.
-          </p>
+          <>
+            <p className="mb-3 text-sm text-green-700">
+              {rezultat.create} invitații noi generate
+              {rezultat.deja > 0 ? ` (${rezultat.deja} erau deja invitați, nu s-au dublat)` : ''}.
+            </p>
+            {rezultat.linkuri.length > 0 && (
+              <div className="mb-4">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-xs font-medium text-slate-600">Linkuri de RSVP (de trimis manual)</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(rezultat.linkuri.join('\n'))}
+                    className="flex items-center gap-1 text-xs text-accent hover:underline"
+                  >
+                    <Copy size={12} /> Copiază tot
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={rezultat.linkuri.join('\n')}
+                  rows={5}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono"
+                />
+              </div>
+            )}
+          </>
         ) : (
           <button
             onClick={handleGenereaza}
@@ -274,7 +299,7 @@ function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
           </button>
         )}
 
-        <button onClick={onClose} className="mt-3 block text-sm text-slate-500 hover:underline">
+        <button onClick={rezultat ? onDone : onClose} className="mt-3 block text-sm text-slate-500 hover:underline">
           {rezultat ? 'Închide' : 'Anulează'}
         </button>
       </div>
@@ -289,8 +314,34 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
 
   const [subiect, setSubiect] = useState(existing?.subiect_email || '')
   const [mesaj, setMesaj] = useState(existing?.mesaj_intro || '')
+  const [afisUrl, setAfisUrl] = useState(existing?.afis_url || '')
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError('')
+
+    const ext = file.name.split('.').pop()
+    const path = `${eveniment.id}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('afise')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      setUploading(false)
+      setError('Nu am putut încărca afișul.')
+      return
+    }
+
+    const { data } = supabase.storage.from('afise').getPublicUrl(path)
+    setAfisUrl(`${data.publicUrl}?v=${Date.now()}`) // cache-bust, ca să vezi imediat afișul nou
+    setUploading(false)
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -301,6 +352,7 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
       eveniment_id: eveniment.id,
       subiect_email: subiect.trim() || null,
       mesaj_intro: mesaj.trim() || null,
+      afis_url: afisUrl.split('?')[0] || null, // salvăm fără parametrul de cache-bust
     })
 
     setSaving(false)
@@ -343,9 +395,20 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
             />
           </div>
 
-          <p className="text-xs text-slate-400">
-            Afișul (poster) se adaugă într-o etapă viitoare, când conectăm încărcarea de imagini.
-          </p>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Afiș</label>
+            {afisUrl && (
+              <img src={afisUrl} alt="Afiș" className="mb-2 max-h-40 rounded-lg border border-slate-200" />
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleUpload}
+              disabled={uploading}
+              className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2"
+            />
+            {uploading && <p className="mt-1 text-xs text-slate-400">Se încarcă...</p>}
+          </div>
 
           {error && <p className="text-xs text-rose-600">{error}</p>}
 

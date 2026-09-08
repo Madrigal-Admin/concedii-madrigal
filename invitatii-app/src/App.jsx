@@ -5,13 +5,27 @@ import Sidebar from './components/Sidebar'
 import EvenimenteTab from './components/EvenimenteTab'
 import PersoaneTab from './components/PersoaneTab'
 import CheckinTab from './components/CheckinTab'
-import ComingSoon from './components/ComingSoon'
+import AprobariTab from './components/AprobariTab'
+import RsvpPage from './pages/RsvpPage'
+import DezabonarePage from './pages/DezabonarePage'
+import NominalizarePage from './pages/NominalizarePage'
 
 const ROLE_LABELS = { full: 'Admin', checkin: 'Verificare la intrare' }
 
 export default function App() {
+  // ---- Pagini publice, fără login — verificate ÎNAINTE de orice logică
+  // de autentificare, pe baza parametrilor din URL. ----
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('rsvp')) return <RsvpPage token={params.get('rsvp')} />
+  if (params.has('dezabonare')) return <DezabonarePage token={params.get('dezabonare')} />
+  if (params.has('nominalizare')) return <NominalizarePage />
+
+  return <AdminApp />
+}
+
+function AdminApp() {
   const [session, setSession] = useState(undefined)
-  const [role, setRole] = useState(null) // 'full' | 'checkin' | 'unknown' | null
+  const [role, setRole] = useState(null)
   const [angajat, setAngajat] = useState(null)
   const [view, setView] = useState('evenimente')
   const [checkingRole, setCheckingRole] = useState(false)
@@ -26,8 +40,6 @@ export default function App() {
     if (session === undefined) return
 
     if (!session) {
-      // Fără ecran de login propriu — Invitațiile se bazează exclusiv pe
-      // sesiunea partajată de Hub.
       window.location.href = '/'
       return
     }
@@ -98,7 +110,7 @@ export default function App() {
             {view === 'evenimente' && <EvenimenteTab role={role} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
             {view === 'checkin' && <CheckinTab />}
-            {view === 'aprobari' && role === 'full' && <ComingSoon title="Aprobări" />}
+            {view === 'aprobari' && role === 'full' && <AprobariTab />}
           </div>
         </main>
       </div>
