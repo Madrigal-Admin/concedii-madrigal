@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import EvenimenteTab from './components/EvenimenteTab'
 import PersoaneTab from './components/PersoaneTab'
+import CheckinTab from './components/CheckinTab'
 import ComingSoon from './components/ComingSoon'
 
 const ROLE_LABELS = { full: 'Admin', checkin: 'Verificare la intrare' }
@@ -96,7 +97,7 @@ export default function App() {
           <div className="mx-auto max-w-5xl">
             {view === 'evenimente' && <EvenimenteTab role={role} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
-            {view === 'checkin' && <ComingSoon title="Check-in" />}
+            {view === 'checkin' && <CheckinTab />}
             {view === 'aprobari' && role === 'full' && <ComingSoon title="Aprobări" />}
           </div>
         </main>

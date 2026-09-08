@@ -3,6 +3,8 @@ import Papa from 'papaparse'
 import { Pencil, Trash2, Save, X as XIcon, Upload, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 
+export const CATEGORII = ['Autoritate Publică', 'Sponsor', 'Colaborator', 'Presă', 'Prieteni/Familie']
+
 const EMPTY_FORM = {
   nume: '',
   prenume: '',
@@ -145,12 +147,18 @@ export default function PersoaneTab() {
         </div>
         <div>
           <label className="block text-sm text-slate-600 mb-1">Categorie</label>
-          <input
+          <select
             value={form.categorie}
             onChange={(e) => setForm({ ...form, categorie: e.target.value })}
-            placeholder="Ex: Presă, Sponsor, Prieteni"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          />
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
+          >
+            <option value="">— Alege categorie —</option>
+            {CATEGORII.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm text-slate-600 mb-1">Instituție</label>
