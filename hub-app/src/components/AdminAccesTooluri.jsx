@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient'
 const TOOLS = [
   { key: 'hub', label: 'Hub', roles: ['admin'] },
   { key: 'hr', label: 'HR', roles: ['angajat', 'operational', 'full'] },
-  { key: 'invitatii', label: 'Invitații', roles: ['angajat'] },
+  { key: 'invitatii', label: 'Invitații', roles: ['full', 'checkin'] },
 ]
 
 const ROLE_LABELS = {
@@ -13,6 +13,7 @@ const ROLE_LABELS = {
   angajat: 'Angajat',
   operational: 'Operațional',
   full: 'Admin complet',
+  checkin: 'Verificare la intrare',
 }
 
 export default function AdminAccesTooluri() {
