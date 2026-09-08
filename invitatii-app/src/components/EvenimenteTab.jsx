@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Save, X as XIcon, Send, Upload, Copy, Calendar, MapPin } from 'lucide-react'
+import { X as XIcon, Save, Send, Copy, Calendar, MapPin, Mail, UserMinus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { CATEGORII } from './PersoaneTab'
 
@@ -7,6 +7,12 @@ const STATUS_TAG = {
   azi: { label: 'AZI', className: 'bg-accent text-white' },
   viitor: { label: 'Viitor', className: 'bg-accent/10 text-accent' },
   incheiat: { label: 'Încheiat', className: 'bg-slate-100 text-slate-500' },
+}
+
+const RSVP_BADGE = {
+  confirmat: { label: 'Confirmat', className: 'bg-green-50 text-green-700' },
+  refuzat: { label: 'Refuzat', className: 'bg-rose-50 text-rose-600' },
+  in_asteptare: { label: 'În așteptare', className: 'bg-amber-50 text-amber-700' },
 }
 
 function formatData(dataStr) {
@@ -19,8 +25,7 @@ export default function EvenimenteTab({ role }) {
   const [stats, setStats] = useState({})
   const [cautare, setCautare] = useState('')
   const [loading, setLoading] = useState(true)
-  const [editingId, setEditingId] = useState(null)
-  const [sendingId, setSendingId] = useState(null)
+  const [openId, setOpenId] = useState(null)
 
   useEffect(() => {
     load()
@@ -59,15 +64,13 @@ export default function EvenimenteTab({ role }) {
   const filtrate = useMemo(() => {
     const q = cautare.toLowerCase()
     if (!q) return evenimente
-    return evenimente.filter(
-      (e) => e.nume?.toLowerCase().includes(q) || e.locatie?.toLowerCase().includes(q)
-    )
+    return evenimente.filter((e) => e.nume?.toLowerCase().includes(q) || e.locatie?.toLowerCase().includes(q))
   }, [evenimente, cautare])
 
   const viitoare = filtrate.filter((e) => e.data && e.data >= azi)
   const incheiate = filtrate.filter((e) => !e.data || e.data < azi).reverse()
 
-  const editingEveniment = evenimente.find((e) => e.id === editingId) || null
+  const evenimentDeschis = evenimente.find((e) => e.id === openId) || null
 
   if (loading) return <p className="text-sm text-slate-500">Se încarcă...</p>
 
@@ -91,8 +94,7 @@ export default function EvenimenteTab({ role }) {
         titlu="Evenimente viitoare"
         evenimente={viitoare}
         role={role}
-        onEdit={setEditingId}
-        onSend={setSendingId}
+        onOpen={setOpenId}
         stats={stats}
         azi={azi}
         gol="Niciun eveniment viitor cu RSVP activ."
@@ -101,39 +103,20 @@ export default function EvenimenteTab({ role }) {
         titlu="Evenimente încheiate"
         evenimente={incheiate}
         role={role}
-        onEdit={setEditingId}
-        onSend={setSendingId}
+        onOpen={setOpenId}
         stats={stats}
         azi={azi}
         gol="Niciun eveniment încheiat."
       />
 
-      {editingEveniment && (
-        <EditorConținut
-          eveniment={editingEveniment}
-          onClose={() => setEditingId(null)}
-          onSaved={() => {
-            setEditingId(null)
-            load()
-          }}
-        />
-      )}
-
-      {sendingId && (
-        <TrimiteInvitatiiModal
-          eveniment={evenimente.find((e) => e.id === sendingId)}
-          onClose={() => setSendingId(null)}
-          onDone={() => {
-            setSendingId(null)
-            load()
-          }}
-        />
+      {evenimentDeschis && (
+        <EvenimentModal eveniment={evenimentDeschis} onClose={() => setOpenId(null)} onChanged={load} />
       )}
     </div>
   )
 }
 
-function Sectiune({ titlu, evenimente, role, onEdit, onSend, stats, azi, gol }) {
+function Sectiune({ titlu, evenimente, role, onOpen, stats, azi, gol }) {
   return (
     <div className="mb-8">
       <h2 className="mb-3 text-sm font-medium text-slate-500">{titlu}</h2>
@@ -184,20 +167,12 @@ function Sectiune({ titlu, evenimente, role, onEdit, onSend, stats, azi, gol }) 
                 )}
 
                 {role === 'full' && (
-                  <div className="mt-auto flex gap-2 pt-1">
-                    <button
-                      onClick={() => onEdit(e.id)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 focus-ring"
-                    >
-                      <Pencil size={13} /> Conținut email
-                    </button>
-                    <button
-                      onClick={() => onSend(e.id)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent/10 px-3 py-2 text-xs font-medium text-accent hover:bg-accent/20 focus-ring"
-                    >
-                      <Send size={13} /> Trimite invitații
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => onOpen(e.id)}
+                    className="mt-auto flex items-center justify-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-medium px-3 py-2.5 transition"
+                  >
+                    <Mail size={13} /> Conținut &amp; trimitere invitații
+                  </button>
                 )}
               </div>
             )
@@ -217,164 +192,230 @@ function Stat({ valoare, eticheta, culoare }) {
   )
 }
 
-function TrimiteInvitatiiModal({ eveniment, onClose, onDone }) {
+// =========================================================================
+// Modalul unificat — Invitați / Conținut & trimitere
+// =========================================================================
+
+function EvenimentModal({ eveniment, onClose, onChanged }) {
+  const [tab, setTab] = useState('invitati')
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between border-b border-slate-100 p-6 pb-4">
+          <div>
+            <h3 className="font-display text-lg font-semibold text-slate-800">{eveniment.nume}</h3>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {formatData(eveniment.data)}
+              {eveniment.locatie ? ` · ${eveniment.locatie}` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 focus-ring">
+            <XIcon size={16} />
+          </button>
+        </div>
+
+        <div className="flex gap-1 border-b border-slate-100 px-6">
+          <button
+            onClick={() => setTab('invitati')}
+            className={`px-3 py-3 text-sm font-medium border-b-2 -mb-px transition ${
+              tab === 'invitati' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Invitați
+          </button>
+          <button
+            onClick={() => setTab('continut')}
+            className={`px-3 py-3 text-sm font-medium border-b-2 -mb-px transition ${
+              tab === 'continut' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Conținut &amp; trimitere
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto p-6">
+          {tab === 'invitati' ? (
+            <TabInvitati eveniment={eveniment} onChanged={onChanged} />
+          ) : (
+            <TabContinut eveniment={eveniment} onChanged={onChanged} />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// -------------------------------------------------------------------------
+// Tab Invitați — listă existentă (cu status) + adăugare pe categorii,
+// cu excludere individuală
+// -------------------------------------------------------------------------
+
+function TabInvitati({ eveniment, onChanged }) {
+  const [invitatii, setInvitatii] = useState([])
+  const [loading, setLoading] = useState(true)
   const [selectate, setSelectate] = useState([])
-  const [numarPotential, setNumarPotential] = useState(null)
-  const [generating, setGenerating] = useState(false)
-  const [rezultat, setRezultat] = useState(null)
-  const [error, setError] = useState('')
+  const [potentiali, setPotentiali] = useState([])
+  const [excluse, setExcluse] = useState(new Set())
+  const [adaugand, setAdaugand] = useState(false)
 
   useEffect(() => {
-    numarare()
-  }, [selectate])
+    loadInvitatii()
+  }, [])
 
-  async function numarare() {
+  useEffect(() => {
+    loadPotentiali()
+  }, [selectate, invitatii])
+
+  async function loadInvitatii() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('invitatii')
+      .select('*, persoane(nume, prenume, email, categorie)')
+      .eq('eveniment_id', eveniment.id)
+    setInvitatii(data || [])
+    setLoading(false)
+  }
+
+  async function loadPotentiali() {
     if (selectate.length === 0) {
-      setNumarPotential(0)
+      setPotentiali([])
       return
     }
-    const { count } = await supabase
+    const dejaInvitati = new Set(invitatii.map((i) => i.persoana_id).filter(Boolean))
+    const { data } = await supabase
       .from('persoane')
-      .select('id', { count: 'exact', head: true })
+      .select('id, nume, prenume, email, categorie')
       .in('categorie', selectate)
       .eq('abonat_invitatii', true)
-    setNumarPotential(count || 0)
+    setPotentiali((data || []).filter((p) => !dejaInvitati.has(p.id)))
+    setExcluse(new Set())
   }
 
   function toggleCategorie(c) {
     setSelectate((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
   }
 
-  async function handleGenereaza() {
-    setGenerating(true)
-    setError('')
+  function toggleExclus(id) {
+    setExcluse((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
-    const { data: persoane, error: errPersoane } = await supabase
-      .from('persoane')
-      .select('id, nume, prenume, email')
-      .in('categorie', selectate)
-      .eq('abonat_invitatii', true)
+  const deAdaugat = potentiali.filter((p) => !excluse.has(p.id))
 
-    if (errPersoane) {
-      setGenerating(false)
-      setError('Nu am putut citi lista de persoane.')
-      return
-    }
-
-    const { data: existente } = await supabase
-      .from('invitatii')
-      .select('persoana_id')
-      .eq('eveniment_id', eveniment.id)
-
-    const dejaInvitati = new Set((existente || []).map((r) => r.persoana_id))
-    const deInvitat = persoane.filter((p) => !dejaInvitati.has(p.id))
-
-    if (deInvitat.length === 0) {
-      setGenerating(false)
-      setRezultat({ create: 0, deja: persoane.length, linkuri: [] })
-      return
-    }
-
-    const payload = deInvitat.map((p) => ({
+  async function handleAdauga() {
+    if (deAdaugat.length === 0) return
+    setAdaugand(true)
+    const payload = deAdaugat.map((p) => ({
       eveniment_id: eveniment.id,
       persoana_id: p.id,
       sursa: 'trimitere',
     }))
+    await supabase.from('invitatii').insert(payload)
+    setAdaugand(false)
+    setSelectate([])
+    setPotentiali([])
+    loadInvitatii()
+    onChanged()
+  }
 
-    const { data: create, error: errInsert } = await supabase.from('invitatii').insert(payload).select('token, persoana_id')
-    setGenerating(false)
-
-    if (errInsert) {
-      setError('Nu am putut genera invitațiile.')
-      return
-    }
-
-    const linkuri = create.map((row) => {
-      const p = deInvitat.find((x) => x.id === row.persoana_id)
-      return `${p.prenume} ${p.nume} <${p.email}> — ${window.location.origin}/invitatii/?rsvp=${row.token}`
-    })
-
-    setRezultat({ create: deInvitat.length, deja: persoane.length - deInvitat.length, linkuri })
+  async function handleSterge(invitatieId) {
+    if (!confirm('Elimini această persoană din lista de invitați la acest eveniment?')) return
+    await supabase.from('invitatii').delete().eq('id', invitatieId)
+    loadInvitatii()
+    onChanged()
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-800">Trimite invitații — {eveniment.nume}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
-            <XIcon size={16} />
-          </button>
-        </div>
-
-        <p className="mb-3 text-xs text-slate-500">
-          Alege ce categorii de persoane vrei să inviți. Se generează câte o invitație (cu link unic de RSVP)
-          pentru fiecare persoană abonată din categoriile alese — cei deja invitați la acest eveniment nu se
-          dublează.
-        </p>
-
-        <div className="mb-4 space-y-1.5">
+    <div>
+      <div className="mb-5 rounded-xl border border-slate-200 p-4">
+        <p className="mb-2 text-xs font-medium text-slate-600">Adaugă invitați din categorii</p>
+        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5">
           {CATEGORII.map((c) => (
-            <label key={c} className="flex items-center gap-2 text-sm text-slate-700">
+            <label key={c} className="flex items-center gap-1.5 text-sm text-slate-700">
               <input type="checkbox" checked={selectate.includes(c)} onChange={() => toggleCategorie(c)} />
               {c}
             </label>
           ))}
         </div>
 
-        {numarPotential != null && (
-          <p className="mb-4 text-sm text-slate-600">
-            <strong>{numarPotential}</strong> persoane abonate în categoriile alese.
-          </p>
+        {potentiali.length > 0 && (
+          <div className="mb-3 max-h-48 overflow-y-auto rounded-lg border border-slate-100">
+            {potentiali.map((p) => (
+              <label
+                key={p.id}
+                className={`flex items-center justify-between gap-2 border-b border-slate-50 px-3 py-2 text-sm last:border-b-0 ${
+                  excluse.has(p.id) ? 'opacity-40' : ''
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <input type="checkbox" checked={!excluse.has(p.id)} onChange={() => toggleExclus(p.id)} />
+                  {p.prenume} {p.nume}
+                  <span className="text-xs text-slate-400">{p.categorie}</span>
+                </span>
+              </label>
+            ))}
+          </div>
         )}
 
-        {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
-
-        {rezultat ? (
-          <>
-            <p className="mb-3 text-sm text-green-700">
-              {rezultat.create} invitații noi generate
-              {rezultat.deja > 0 ? ` (${rezultat.deja} erau deja invitați, nu s-au dublat)` : ''}.
+        {selectate.length > 0 && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              {deAdaugat.length} din {potentiali.length} vor fi adăugați
             </p>
-            {rezultat.linkuri.length > 0 && (
-              <div className="mb-4">
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-xs font-medium text-slate-600">Linkuri de RSVP (de trimis manual)</p>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(rezultat.linkuri.join('\n'))}
-                    className="flex items-center gap-1 text-xs text-accent hover:underline"
-                  >
-                    <Copy size={12} /> Copiază tot
+            <button
+              onClick={handleAdauga}
+              disabled={deAdaugat.length === 0 || adaugand}
+              className="flex items-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-medium px-3 py-1.5 transition disabled:opacity-50"
+            >
+              {adaugand ? 'Se adaugă...' : `Adaugă ${deAdaugat.length} invitați`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <p className="mb-2 text-xs font-medium text-slate-600">
+        Invitați existenți {loading ? '' : `(${invitatii.length})`}
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Se încarcă...</p>
+      ) : invitatii.length === 0 ? (
+        <p className="text-sm text-slate-400">Niciun invitat adăugat încă.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {invitatii.map((i) => {
+            const nume = i.persoane ? `${i.persoane.prenume} ${i.persoane.nume}` : i.nume_complet_invitat
+            const badge = RSVP_BADGE[i.status_rsvp] || RSVP_BADGE.in_asteptare
+            return (
+              <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-slate-800">{nume}</p>
+                  <p className="text-xs text-slate-400">{i.persoane?.categorie || (i.sursa === 'nominalizare' ? 'Nominalizare' : '—')}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}>{badge.label}</span>
+                  <button onClick={() => handleSterge(i.id)} className="text-slate-300 hover:text-rose-500" title="Elimină">
+                    <UserMinus size={14} />
                   </button>
                 </div>
-                <textarea
-                  readOnly
-                  value={rezultat.linkuri.join('\n')}
-                  rows={5}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono"
-                />
               </div>
-            )}
-          </>
-        ) : (
-          <button
-            onClick={handleGenereaza}
-            disabled={selectate.length === 0 || generating}
-            className="flex items-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 transition disabled:opacity-50"
-          >
-            <Send size={14} /> {generating ? 'Se generează...' : 'Generează invitațiile'}
-          </button>
-        )}
-
-        <button onClick={rezultat ? onDone : onClose} className="mt-3 block text-sm text-slate-500 hover:underline">
-          {rezultat ? 'Închide' : 'Anulează'}
-        </button>
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
-function EditorConținut({ eveniment, onClose, onSaved }) {
+// -------------------------------------------------------------------------
+// Tab Conținut & trimitere
+// -------------------------------------------------------------------------
+
+function TabContinut({ eveniment, onChanged }) {
   const existing = Array.isArray(eveniment.invitatii_profil_eveniment)
     ? eveniment.invitatii_profil_eveniment[0]
     : eveniment.invitatii_profil_eveniment
@@ -385,6 +426,22 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [numarInAsteptare, setNumarInAsteptare] = useState(null)
+  const [linkuri, setLinkuri] = useState(null)
+  const [generatingLinks, setGeneratingLinks] = useState(false)
+
+  useEffect(() => {
+    numarare()
+  }, [])
+
+  async function numarare() {
+    const { count } = await supabase
+      .from('invitatii')
+      .select('id', { count: 'exact', head: true })
+      .eq('eveniment_id', eveniment.id)
+      .eq('status_rsvp', 'in_asteptare')
+    setNumarInAsteptare(count || 0)
+  }
 
   async function handleUpload(e) {
     const file = e.target.files?.[0]
@@ -395,9 +452,7 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
     const ext = file.name.split('.').pop()
     const path = `${eveniment.id}.${ext}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('afise')
-      .upload(path, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage.from('afise').upload(path, file, { upsert: true })
 
     if (uploadError) {
       setUploading(false)
@@ -406,12 +461,11 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
     }
 
     const { data } = supabase.storage.from('afise').getPublicUrl(path)
-    setAfisUrl(`${data.publicUrl}?v=${Date.now()}`) // cache-bust, ca să vezi imediat afișul nou
+    setAfisUrl(`${data.publicUrl}?v=${Date.now()}`)
     setUploading(false)
   }
 
-  async function handleSave(e) {
-    e.preventDefault()
+  async function handleSave() {
     setSaving(true)
     setError('')
 
@@ -419,7 +473,7 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
       eveniment_id: eveniment.id,
       subiect_email: subiect.trim() || null,
       mesaj_intro: mesaj.trim() || null,
-      afis_url: afisUrl.split('?')[0] || null, // salvăm fără parametrul de cache-bust
+      afis_url: afisUrl.split('?')[0] || null,
     })
 
     setSaving(false)
@@ -427,75 +481,104 @@ function EditorConținut({ eveniment, onClose, onSaved }) {
       setError('Nu am putut salva conținutul.')
       return
     }
-    onSaved()
+    onChanged()
+  }
+
+  async function handleTrimite() {
+    setGeneratingLinks(true)
+    const { data } = await supabase
+      .from('invitatii')
+      .select('token, persoane(nume, prenume, email), nume_complet_invitat')
+      .eq('eveniment_id', eveniment.id)
+      .eq('status_rsvp', 'in_asteptare')
+
+    const rows = (data || []).map((i) => {
+      const nume = i.persoane ? `${i.persoane.prenume} ${i.persoane.nume}` : i.nume_complet_invitat
+      const email = i.persoane?.email || ''
+      return `${nume}${email ? ` <${email}>` : ''} — ${window.location.origin}/invitatii/?rsvp=${i.token}`
+    })
+    setLinkuri(rows)
+    setGeneratingLinks(false)
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
-      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-800">Conținut email — {eveniment.nume}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 focus-ring">
-            <XIcon size={16} />
-          </button>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600">Subiect email</label>
+        <input
+          value={subiect}
+          onChange={(e) => setSubiect(e.target.value)}
+          placeholder="Ex: Invitație la concertul de Crăciun"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Subiect email</label>
-            <input
-              value={subiect}
-              onChange={(e) => setSubiect(e.target.value)}
-              placeholder="Ex: Invitație la concertul de Crăciun"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Mesaj introductiv <span className="text-slate-400">(poți folosi {'{{nume}}'})</span>
-            </label>
-            <textarea
-              value={mesaj}
-              onChange={(e) => setMesaj(e.target.value)}
-              rows={5}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600">
+          Mesaj <span className="text-slate-400">(poți folosi {'{{nume}}'})</span>
+        </label>
+        <textarea
+          value={mesaj}
+          onChange={(e) => setMesaj(e.target.value)}
+          rows={5}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Afiș</label>
-            {afisUrl && (
-              <img src={afisUrl} alt="Afiș" className="mb-2 max-h-40 rounded-lg border border-slate-200" />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleUpload}
-              disabled={uploading}
-              className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2"
-            />
-            {uploading && <p className="mt-1 text-xs text-slate-400">Se încarcă...</p>}
-          </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600">Afiș (același pentru toți invitații)</label>
+        {afisUrl && <img src={afisUrl} alt="Afiș" className="mb-2 max-h-40 rounded-lg border border-slate-200" />}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleUpload}
+          disabled={uploading}
+          className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2"
+        />
+        {uploading && <p className="mt-1 text-xs text-slate-400">Se încarcă...</p>}
+      </div>
 
-          {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
 
-          <div className="flex gap-2 pt-1">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50"
-            >
-              <Save size={14} /> {saving ? 'Se salvează...' : 'Salvează'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-1.5 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 focus-ring"
-            >
-              <XIcon size={14} /> Închide
-            </button>
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 transition disabled:opacity-50"
+      >
+        <Save size={14} /> {saving ? 'Se salvează...' : 'Salvează conținutul'}
+      </button>
+
+      <div className="rounded-xl border border-slate-200 p-4">
+        <p className="mb-2 text-sm text-slate-600">
+          <strong>{numarInAsteptare ?? '…'}</strong> invitați în așteptare vor primi acest mesaj.
+        </p>
+        <p className="mb-3 text-xs text-amber-600">
+          Trimiterea automată prin email vine cu Etapa 6 (Brevo). Până atunci, „Trimite invitații" generează
+          linkurile de RSVP, gata de copiat și trimis manual.
+        </p>
+
+        <button
+          onClick={handleTrimite}
+          disabled={generatingLinks || !numarInAsteptare}
+          className="flex items-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-4 py-2.5 transition disabled:opacity-50"
+        >
+          <Send size={14} /> {generatingLinks ? 'Se generează...' : 'Trimite invitații'}
+        </button>
+
+        {linkuri && (
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-600">Linkuri de RSVP</p>
+              <button
+                onClick={() => navigator.clipboard.writeText(linkuri.join('\n'))}
+                className="flex items-center gap-1 text-xs text-accent hover:underline"
+              >
+                <Copy size={12} /> Copiază tot
+              </button>
+            </div>
+            <textarea readOnly value={linkuri.join('\n')} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono" />
           </div>
-        </form>
+        )}
       </div>
     </div>
   )
