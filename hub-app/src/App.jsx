@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import Dashboard from './components/Dashboard'
 import AdminLayout from './components/AdminLayout'
+import CalendarView from './components/CalendarView'
 
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = încă neverificat
@@ -107,12 +108,25 @@ export default function App() {
     )
   }
 
+  if (view === 'calendar') {
+    return (
+      <CalendarView
+        angajat={angajat}
+        isHubAdmin={isHubAdmin}
+        session={session}
+        onBack={() => setView('dashboard')}
+        onSignOut={handleSignOut}
+      />
+    )
+  }
+
   return (
     <Dashboard
       angajat={angajat}
       accesTooluri={accesTooluri}
       isHubAdmin={isHubAdmin}
       onOpenAdmin={() => setView('admin')}
+      onOpenCalendar={() => setView('calendar')}
       onSignOut={handleSignOut}
     />
   )
