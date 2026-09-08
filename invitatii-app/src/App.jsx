@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import EvenimenteTab from './components/EvenimenteTab'
+import PersoaneTab from './components/PersoaneTab'
 import ComingSoon from './components/ComingSoon'
 
 const ROLE_LABELS = { full: 'Admin', checkin: 'Verificare la intrare' }
@@ -94,7 +95,7 @@ export default function App() {
         <main className="flex-1 p-6 md:p-8 min-w-0">
           <div className="mx-auto max-w-5xl">
             {view === 'evenimente' && <EvenimenteTab role={role} />}
-            {view === 'persoane' && role === 'full' && <ComingSoon title="Persoane" />}
+            {view === 'persoane' && role === 'full' && <PersoaneTab />}
             {view === 'checkin' && <ComingSoon title="Check-in" />}
             {view === 'aprobari' && role === 'full' && <ComingSoon title="Aprobări" />}
           </div>
