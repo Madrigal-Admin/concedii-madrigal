@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Pencil, Save, X as XIcon, Send, Upload, Copy } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Pencil, Save, X as XIcon, Send, Upload, Copy, Calendar, MapPin } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { CATEGORII } from './PersoaneTab'
+
+const STATUS_TAG = {
+  azi: { label: 'AZI', className: 'bg-accent text-white' },
+  viitor: { label: 'Viitor', className: 'bg-accent/10 text-accent' },
+  incheiat: { label: 'Încheiat', className: 'bg-slate-100 text-slate-500' },
+}
 
 function formatData(dataStr) {
   if (!dataStr) return '—'
@@ -10,7 +16,8 @@ function formatData(dataStr) {
 
 export default function EvenimenteTab({ role }) {
   const [evenimente, setEvenimente] = useState([])
-  const [invitatiiCount, setInvitatiiCount] = useState({})
+  const [stats, setStats] = useState({})
+  const [cautare, setCautare] = useState('')
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [sendingId, setSendingId] = useState(null)
@@ -27,22 +34,38 @@ export default function EvenimenteTab({ role }) {
         .select('*, invitatii_profil_eveniment(*)')
         .eq('necesita_rsvp', true)
         .order('data', { ascending: true }),
-      supabase.from('invitatii').select('eveniment_id'),
+      supabase.from('invitatii').select('eveniment_id, status_rsvp, prezent'),
     ])
 
-    const counts = {}
+    const s = {}
     for (const r of invitatiiRows || []) {
-      counts[r.eveniment_id] = (counts[r.eveniment_id] || 0) + 1
+      if (!s[r.eveniment_id]) {
+        s[r.eveniment_id] = { total: 0, confirmate: 0, refuzate: 0, in_asteptare: 0, prezenti: 0 }
+      }
+      s[r.eveniment_id].total += 1
+      if (r.status_rsvp === 'confirmat') s[r.eveniment_id].confirmate += 1
+      else if (r.status_rsvp === 'refuzat') s[r.eveniment_id].refuzate += 1
+      else s[r.eveniment_id].in_asteptare += 1
+      if (r.prezent) s[r.eveniment_id].prezenti += 1
     }
 
     setEvenimente(data || [])
-    setInvitatiiCount(counts)
+    setStats(s)
     setLoading(false)
   }
 
   const azi = new Date().toISOString().slice(0, 10)
-  const viitoare = evenimente.filter((e) => e.data && e.data >= azi)
-  const incheiate = evenimente.filter((e) => !e.data || e.data < azi).reverse()
+
+  const filtrate = useMemo(() => {
+    const q = cautare.toLowerCase()
+    if (!q) return evenimente
+    return evenimente.filter(
+      (e) => e.nume?.toLowerCase().includes(q) || e.locatie?.toLowerCase().includes(q)
+    )
+  }, [evenimente, cautare])
+
+  const viitoare = filtrate.filter((e) => e.data && e.data >= azi)
+  const incheiate = filtrate.filter((e) => !e.data || e.data < azi).reverse()
 
   const editingEveniment = evenimente.find((e) => e.id === editingId) || null
 
@@ -50,9 +73,18 @@ export default function EvenimenteTab({ role }) {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-slate-500">
-        Evenimentele de aici vin din calendarul central al Hub-ului — cele marcate „necesită RSVP".
-        Dacă lipsește un eveniment, verifică bifa din Hub → Calendar.
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <input
+          value={cautare}
+          onChange={(e) => setCautare(e.target.value)}
+          placeholder="Caută după numele evenimentului sau locație..."
+          className="w-full sm:w-96 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
+
+      <p className="mb-4 text-xs text-slate-400">
+        Evenimentele vin din calendarul central al Hub-ului — cele marcate „necesită RSVP". Dacă lipsește
+        unul, verifică bifa din Hub → Calendar.
       </p>
 
       <Sectiune
@@ -61,7 +93,8 @@ export default function EvenimenteTab({ role }) {
         role={role}
         onEdit={setEditingId}
         onSend={setSendingId}
-        invitatiiCount={invitatiiCount}
+        stats={stats}
+        azi={azi}
         gol="Niciun eveniment viitor cu RSVP activ."
       />
       <Sectiune
@@ -70,7 +103,8 @@ export default function EvenimenteTab({ role }) {
         role={role}
         onEdit={setEditingId}
         onSend={setSendingId}
-        invitatiiCount={invitatiiCount}
+        stats={stats}
+        azi={azi}
         gol="Niciun eveniment încheiat."
       />
 
@@ -99,43 +133,67 @@ export default function EvenimenteTab({ role }) {
   )
 }
 
-function Sectiune({ titlu, evenimente, role, onEdit, onSend, invitatiiCount, gol }) {
+function Sectiune({ titlu, evenimente, role, onEdit, onSend, stats, azi, gol }) {
   return (
     <div className="mb-8">
-      <h2 className="text-sm font-medium text-slate-500 mb-3">{titlu}</h2>
+      <h2 className="mb-3 text-sm font-medium text-slate-500">{titlu}</h2>
       {evenimente.length === 0 ? (
         <p className="text-sm text-slate-400">{gol}</p>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {evenimente.map((e) => {
             const profil = Array.isArray(e.invitatii_profil_eveniment)
               ? e.invitatii_profil_eveniment[0]
               : e.invitatii_profil_eveniment
-            const count = invitatiiCount[e.id] || 0
+            const s = stats[e.id] || { confirmate: 0, refuzate: 0, in_asteptare: 0, prezenti: 0 }
+
+            const tagKey = !e.data || e.data < azi ? 'incheiat' : e.data === azi ? 'azi' : 'viitor'
+            const tag = STATUS_TAG[tagKey]
+
             return (
-              <div key={e.id} className="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center gap-3 justify-between">
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-800">{e.nume}</p>
-                  <p className="text-sm text-slate-500 mt-0.5">
+              <div key={e.id} className="flex flex-col rounded-2xl bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <p className="font-display text-lg font-semibold leading-snug text-slate-800">{e.nume}</p>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tag.className}`}>
+                    {tag.label}
+                  </span>
+                </div>
+
+                <div className="mb-4 space-y-1.5 text-sm text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-slate-400" />
                     {formatData(e.data)}
-                    {e.locatie ? ` · ${e.locatie}` : ''}
-                    {count > 0 ? ` · ${count} invitații generate` : ''}
-                  </p>
-                  {!profil?.subiect_email && (
-                    <p className="text-xs text-amber-600 mt-1">Fără conținut de email încă</p>
+                  </div>
+                  {e.locatie && (
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-slate-400" />
+                      {e.locatie}
+                    </div>
                   )}
                 </div>
+
+                <div className="mb-4 grid grid-cols-4 gap-1 border-y border-slate-100 py-3 text-center">
+                  <Stat valoare={s.confirmate} eticheta="conf." culoare="text-green-600" />
+                  <Stat valoare={s.refuzate} eticheta="ref." culoare="text-rose-500" />
+                  <Stat valoare={s.in_asteptare} eticheta="aștept." culoare="text-amber-500" />
+                  <Stat valoare={s.prezenti} eticheta="prez." culoare="text-slate-700" />
+                </div>
+
+                {!profil?.subiect_email && (
+                  <p className="mb-2 text-xs text-amber-600">Fără conținut de email încă</p>
+                )}
+
                 {role === 'full' && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="mt-auto flex gap-2 pt-1">
                     <button
                       onClick={() => onEdit(e.id)}
-                      className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 focus-ring"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 focus-ring"
                     >
                       <Pencil size={13} /> Conținut email
                     </button>
                     <button
                       onClick={() => onSend(e.id)}
-                      className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 focus-ring"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent/10 px-3 py-2 text-xs font-medium text-accent hover:bg-accent/20 focus-ring"
                     >
                       <Send size={13} /> Trimite invitații
                     </button>
@@ -146,6 +204,15 @@ function Sectiune({ titlu, evenimente, role, onEdit, onSend, invitatiiCount, gol
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function Stat({ valoare, eticheta, culoare }) {
+  return (
+    <div>
+      <p className={`font-display text-xl font-bold ${culoare}`}>{valoare}</p>
+      <p className="text-[10px] uppercase tracking-wide text-slate-400">{eticheta}</p>
     </div>
   )
 }
