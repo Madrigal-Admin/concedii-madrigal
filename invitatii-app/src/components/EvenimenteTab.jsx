@@ -20,7 +20,7 @@ function formatData(dataStr) {
   return new Date(dataStr).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default function EvenimenteTab({ role }) {
+export default function EvenimenteTab({ role, session }) {
   const [evenimente, setEvenimente] = useState([])
   const [stats, setStats] = useState({})
   const [cautare, setCautare] = useState('')
@@ -110,7 +110,7 @@ export default function EvenimenteTab({ role }) {
       />
 
       {evenimentDeschis && (
-        <EvenimentModal eveniment={evenimentDeschis} onClose={() => setOpenId(null)} onChanged={load} />
+        <EvenimentModal eveniment={evenimentDeschis} session={session} onClose={() => setOpenId(null)} onChanged={load} />
       )}
     </div>
   )
@@ -196,7 +196,7 @@ function Stat({ valoare, eticheta, culoare }) {
 // Modalul unificat — Invitați / Conținut & trimitere
 // =========================================================================
 
-function EvenimentModal({ eveniment, onClose, onChanged }) {
+function EvenimentModal({ eveniment, session, onClose, onChanged }) {
   const [tab, setTab] = useState('invitati')
 
   return (
@@ -238,7 +238,7 @@ function EvenimentModal({ eveniment, onClose, onChanged }) {
           {tab === 'invitati' ? (
             <TabInvitati eveniment={eveniment} onChanged={onChanged} />
           ) : (
-            <TabContinut eveniment={eveniment} onChanged={onChanged} />
+            <TabContinut eveniment={eveniment} session={session} onChanged={onChanged} />
           )}
         </div>
       </div>
@@ -415,7 +415,7 @@ function TabInvitati({ eveniment, onChanged }) {
 // Tab Conținut & trimitere
 // -------------------------------------------------------------------------
 
-function TabContinut({ eveniment, onChanged }) {
+function TabContinut({ eveniment, session, onChanged }) {
   const existing = Array.isArray(eveniment.invitatii_profil_eveniment)
     ? eveniment.invitatii_profil_eveniment[0]
     : eveniment.invitatii_profil_eveniment
@@ -428,6 +428,8 @@ function TabContinut({ eveniment, onChanged }) {
   const [error, setError] = useState('')
   const [numarInAsteptare, setNumarInAsteptare] = useState(null)
   const [linkuri, setLinkuri] = useState(null)
+  const [trimitand, setTrimitand] = useState(false)
+  const [rezultatTrimitere, setRezultatTrimitere] = useState(null)
   const [generatingLinks, setGeneratingLinks] = useState(false)
 
   useEffect(() => {
@@ -485,6 +487,35 @@ function TabContinut({ eveniment, onChanged }) {
   }
 
   async function handleTrimite() {
+    setTrimitand(true)
+    setError('')
+    setRezultatTrimitere(null)
+
+    try {
+      const res = await fetch('/.netlify/functions/send-brevo', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ eveniment_id: eveniment.id }),
+      })
+      const result = await res.json()
+
+      if (!res.ok) {
+        setError(result.error || 'Trimiterea a eșuat.')
+      } else {
+        setRezultatTrimitere(result)
+        numarare()
+        onChanged()
+      }
+    } catch {
+      setError('Nu am putut contacta funcția de trimitere.')
+    }
+    setTrimitand(false)
+  }
+
+  async function handleGenereazaLinkuri() {
     setGeneratingLinks(true)
     const { data } = await supabase
       .from('invitatii')
@@ -549,36 +580,50 @@ function TabContinut({ eveniment, onChanged }) {
       </button>
 
       <div className="rounded-xl border border-slate-200 p-4">
-        <p className="mb-2 text-sm text-slate-600">
+        <p className="mb-3 text-sm text-slate-600">
           <strong>{numarInAsteptare ?? '…'}</strong> invitați în așteptare vor primi acest mesaj.
-        </p>
-        <p className="mb-3 text-xs text-amber-600">
-          Trimiterea automată prin email vine cu Etapa 6 (Brevo). Până atunci, „Trimite invitații" generează
-          linkurile de RSVP, gata de copiat și trimis manual.
         </p>
 
         <button
           onClick={handleTrimite}
-          disabled={generatingLinks || !numarInAsteptare}
+          disabled={trimitand || !numarInAsteptare}
           className="flex items-center gap-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-4 py-2.5 transition disabled:opacity-50"
         >
-          <Send size={14} /> {generatingLinks ? 'Se generează...' : 'Trimite invitații'}
+          <Send size={14} /> {trimitand ? 'Se trimite...' : 'Trimite invitații'}
         </button>
 
-        {linkuri && (
-          <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between">
-              <p className="text-xs font-medium text-slate-600">Linkuri de RSVP</p>
-              <button
-                onClick={() => navigator.clipboard.writeText(linkuri.join('\n'))}
-                className="flex items-center gap-1 text-xs text-accent hover:underline"
-              >
-                <Copy size={12} /> Copiază tot
-              </button>
-            </div>
-            <textarea readOnly value={linkuri.join('\n')} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono" />
-          </div>
+        {rezultatTrimitere && (
+          <p className="mt-3 text-sm text-green-700">
+            {rezultatTrimitere.trimise} emailuri trimise
+            {rezultatTrimitere.esuate > 0 ? `, ${rezultatTrimitere.esuate} eșuate` : ''}
+            {rezultatTrimitere.faraEmail > 0 ? `, ${rezultatTrimitere.faraEmail} fără adresă de email (nominalizați)` : ''}.
+          </p>
         )}
+
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <button
+            onClick={handleGenereazaLinkuri}
+            disabled={generatingLinks}
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            <Copy size={12} /> {generatingLinks ? 'Se generează...' : 'Sau generează linkurile de RSVP, pentru trimitere manuală'}
+          </button>
+
+          {linkuri && (
+            <div className="mt-2">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-600">Linkuri de RSVP</p>
+                <button
+                  onClick={() => navigator.clipboard.writeText(linkuri.join('\n'))}
+                  className="flex items-center gap-1 text-xs text-accent hover:underline"
+                >
+                  <Copy size={12} /> Copiază tot
+                </button>
+              </div>
+              <textarea readOnly value={linkuri.join('\n')} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -107,7 +107,7 @@ function AdminApp() {
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
           <div className="mx-auto max-w-5xl">
-            {view === 'evenimente' && <EvenimenteTab role={role} />}
+            {view === 'evenimente' && <EvenimenteTab role={role} session={session} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
             {view === 'checkin' && <CheckinTab />}
             {view === 'aprobari' && role === 'full' && <AprobariTab />}
