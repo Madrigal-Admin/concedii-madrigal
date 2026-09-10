@@ -55,6 +55,9 @@
   font-weight: 700;
   color: var(--madrigal-text);
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .site-header__center p {
@@ -62,15 +65,18 @@
   font-weight: 400;
   color: var(--madrigal-text-secondary);
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .site-header__right {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0.5rem;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 /* De la această lățime în sus, titlul încape pe același rând cu

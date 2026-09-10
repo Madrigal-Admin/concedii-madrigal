@@ -39,16 +39,7 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
 
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <aside className="md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex-shrink-0">
-          <div className="p-2">
-            <button
-              onClick={onBackToDashboard}
-              className="w-full flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
-            >
-              <ArrowLeft size={15} />
-              Înapoi la Hub
-            </button>
-          </div>
-          <nav className="flex md:flex-col overflow-x-auto p-2 pt-0 gap-1">
+          <nav className="flex md:flex-col overflow-x-auto p-2 gap-1">
             {SECTIONS.map((s) => (
               <button
                 key={s.key}
@@ -66,6 +57,13 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
         </aside>
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
+          <button
+            onClick={onBackToDashboard}
+            className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
+          >
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </button>
           {active === 'angajati' && <AdminAngajati />}
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}
