@@ -10,7 +10,6 @@ export default function Navbar({ displayName, roleLabel, onLogout }) {
 
         <div className="site-header__center">
           <h1>Resurse Umane</h1>
-          <p>Concedii și adeverințe</p>
         </div>
 
         <div className="site-header__right">
