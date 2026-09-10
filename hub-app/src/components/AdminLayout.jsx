@@ -18,15 +18,14 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
-        title="Hub Madrigal"
-        subtitle="Administrare"
+        title="Administrare Hub"
         right={
           <div className="flex items-center gap-2">
             <button
               onClick={onBackToDashboard}
               className="text-sm bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap"
             >
-              ← Înapoi la tablou
+              ← Înapoi la Hub
             </button>
             {angajat && (
               <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">

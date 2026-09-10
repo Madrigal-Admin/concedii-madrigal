@@ -9,8 +9,26 @@ export default function App() {
   const [session, setSession] = useState(undefined) // undefined = încă neverificat
   const [angajat, setAngajat] = useState(null)
   const [accesTooluri, setAccesTooluri] = useState([])
-  const [view, setView] = useState('dashboard') // 'dashboard' | 'admin'
+  const [view, setViewState] = useState(() => new URLSearchParams(window.location.search).get('view') || 'dashboard')
   const [loadingProfil, setLoadingProfil] = useState(true)
+
+  // Navigare "reală" — fiecare schimbare de view se scrie în istoricul
+  // browserului, ca butonul "Înapoi" să funcționeze intuitiv, nu să te
+  // scoată din aplicație.
+  function navigateTo(nextView) {
+    setViewState(nextView)
+    const url = nextView === 'dashboard' ? '/' : `/?view=${nextView}`
+    window.history.pushState({ view: nextView }, '', url)
+  }
+
+  useEffect(() => {
+    function onPopState() {
+      const v = new URLSearchParams(window.location.search).get('view') || 'dashboard'
+      setViewState(v)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,7 +78,7 @@ export default function App() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    setView('dashboard')
+    navigateTo('dashboard')
   }
 
   // Încă verificăm dacă există o sesiune salvată
@@ -102,7 +120,7 @@ export default function App() {
     return (
       <AdminLayout
         angajat={angajat}
-        onBackToDashboard={() => setView('dashboard')}
+        onBackToDashboard={() => navigateTo('dashboard')}
         onSignOut={handleSignOut}
       />
     )
@@ -114,7 +132,7 @@ export default function App() {
         angajat={angajat}
         isHubAdmin={isHubAdmin}
         session={session}
-        onBack={() => setView('dashboard')}
+        onBack={() => navigateTo('dashboard')}
         onSignOut={handleSignOut}
       />
     )
@@ -125,8 +143,8 @@ export default function App() {
       angajat={angajat}
       accesTooluri={accesTooluri}
       isHubAdmin={isHubAdmin}
-      onOpenAdmin={() => setView('admin')}
-      onOpenCalendar={() => setView('calendar')}
+      onOpenAdmin={() => navigateTo('admin')}
+      onOpenCalendar={() => navigateTo('calendar')}
       onSignOut={handleSignOut}
     />
   )

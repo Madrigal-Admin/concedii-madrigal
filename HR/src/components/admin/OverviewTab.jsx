@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient'
 import { calculateBalance } from '../../lib/leaveCalculations'
+import { calculateVechime } from '../../lib/vechimeCalculations'
 
 export default function OverviewTab() {
   const [rows, setRows] = useState([])
@@ -16,7 +17,7 @@ export default function OverviewTab() {
     const [{ data: employees }, { data: requests }, { data: recoveries }] = await Promise.all([
       supabase
         .from('angajati')
-        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*)')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_vechime_anterioara(*)')
         .order('nume_complet'),
       supabase.from('leave_requests').select('*').eq('status', 'approved'),
       supabase.from('overtime_recoveries').select('*'),
@@ -26,7 +27,9 @@ export default function OverviewTab() {
       const empRequests = (requests || []).filter((r) => r.angajat_id === emp.id)
       const empRecoveries = (recoveries || []).filter((r) => r.angajat_id === emp.id)
       const balance = calculateBalance(emp, empRequests, empRecoveries)
-      return { emp, balance }
+      const faraPlata = empRequests.filter((r) => r.leave_type === 'Fără Plată')
+      const vechime = calculateVechime(emp, faraPlata)
+      return { emp, balance, vechime }
     })
     setRows(computed)
     if (computed.length > 0) {
@@ -49,6 +52,7 @@ export default function OverviewTab() {
               <th className="px-4 py-3">Angajat</th>
               <th className="px-4 py-3">Departament</th>
               <th className="px-4 py-3">Funcție</th>
+              <th className="px-4 py-3">Vechime</th>
               <th className="px-4 py-3 text-right">Recuperări</th>
               <th className="px-4 py-3 text-right">{years.y2} (expiră 30 iun.)</th>
               <th className="px-4 py-3 text-right">{years.y1}</th>
@@ -58,11 +62,14 @@ export default function OverviewTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ emp, balance }) => (
+            {rows.map(({ emp, balance, vechime }) => (
               <tr key={emp.id} className="border-b border-slate-100 last:border-0">
                 <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{emp.nume_complet}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.department?.name || '—'}</td>
                 <td className="px-4 py-3 text-slate-500">{emp.position?.name || '—'}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                  {vechime.total.years} ani, {vechime.total.months} luni
+                </td>
                 <td className="px-4 py-3 text-right">{balance.recoveries}</td>
                 <td
                   className={`px-4 py-3 text-right ${

@@ -2,13 +2,14 @@ export function PublicHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <div className="site-header__brand">
+        <div className="site-header__left">
           <img src="/assets/logo-madrigal.png" alt="Madrigal" className="site-header__logo" />
-          <div className="site-header__text">
-            <h1>Corul Madrigal</h1>
-            <p>Invitații &amp; evenimente</p>
-          </div>
         </div>
+        <div className="site-header__center">
+          <h1>Corul Madrigal</h1>
+          <p>Invitații &amp; evenimente</p>
+        </div>
+        <div className="site-header__right" />
       </div>
     </header>
   )

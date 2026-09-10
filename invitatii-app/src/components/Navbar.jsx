@@ -4,21 +4,21 @@ export default function Navbar({ displayName, roleLabel, onLogout }) {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <div className="site-header__brand">
+        <div className="site-header__left">
           <img src="/assets/logo-madrigal.png" alt="Madrigal" className="site-header__logo" />
-          <div className="site-header__text">
-            <h1>Invitații &amp; RSVP</h1>
-            <p>Corul Madrigal</p>
-          </div>
         </div>
 
-        <nav className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="site-header__center">
+          <h1>Invitații &amp; RSVP</h1>
+        </div>
+
+        <div className="site-header__right">
           <a
             href="/"
-            className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
+            className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition whitespace-nowrap"
           >
             <ArrowLeft size={15} />
-            Hub
+            Înapoi la Hub
           </a>
 
           {displayName && (
@@ -30,12 +30,12 @@ export default function Navbar({ displayName, roleLabel, onLogout }) {
 
           <button
             onClick={onLogout}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-slate-500 hover:bg-slate-100 focus-ring"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100 focus-ring"
             title="Deconectare"
           >
             <LogOut size={15} />
           </button>
-        </nav>
+        </div>
       </div>
     </header>
   )

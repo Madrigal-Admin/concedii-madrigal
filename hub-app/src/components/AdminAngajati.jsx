@@ -39,6 +39,25 @@ export default function AdminAngajati() {
     setLoading(false)
   }
 
+  async function handleDelete(a) {
+    const confirmat = confirm(
+      `Ștergi definitiv "${a.nume_complet}"?\n\n` +
+      `Se șterg și: profilul lui HR (contract, solduri), istoricul de vechime, ` +
+      `și accesul lui la tool-uri. Cererile de concediu deja depuse rămân, ` +
+      `dar fără legătură directă la acest angajat.\n\n` +
+      `Dacă angajatul doar a plecat temporar sau vrei să-i păstrezi datele, ` +
+      `mai bine editează-l și debifează "Angajat activ" — poți reveni oricând.`
+    )
+    if (!confirmat) return
+
+    const { error } = await supabase.from('angajati').delete().eq('id', a.id)
+    if (error) {
+      alert('Nu am putut șterge angajatul: ' + error.message)
+      return
+    }
+    loadAll()
+  }
+
   function startEdit(a) {
     setEditingId(a.id)
     setForm({
@@ -216,9 +235,15 @@ export default function AdminAngajati() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => startEdit(a)}
-                      className="text-accent text-sm hover:underline"
+                      className="text-accent text-sm hover:underline mr-3"
                     >
                       Editează
+                    </button>
+                    <button
+                      onClick={() => handleDelete(a)}
+                      className="text-rose-500 text-sm hover:underline"
+                    >
+                      Șterge
                     </button>
                   </td>
                 </tr>

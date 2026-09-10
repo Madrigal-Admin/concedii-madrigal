@@ -8,12 +8,12 @@ import SettingsTab from './admin/SettingsTab'
 import VechimeTab from './admin/VechimeTab'
 
 const ALL_TABS = [
+  { key: 'overview', label: 'Privire generală' },
   { key: 'approvals', label: 'Aprobări concedii' },
   { key: 'certificates', label: 'Cereri adeverințe' },
   { key: 'recoveries', label: 'Gestiune Recuperări' },
   { key: 'reports', label: 'Rapoarte cereri' },
   { key: 'vechime', label: 'Centralizator Vechime', fullAdminOnly: true },
-  { key: 'overview', label: 'Privire generală' },
   { key: 'settings', label: 'Setări', fullAdminOnly: true },
 ]
 
