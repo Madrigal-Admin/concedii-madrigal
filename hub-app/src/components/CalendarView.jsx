@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LogOut, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LogOut, RefreshCw, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
@@ -126,12 +126,6 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
         title="Calendar Evenimente"
         right={
           <div className="flex items-center gap-2">
-            <button
-              onClick={onBack}
-              className="text-sm bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap"
-            >
-              ← Înapoi la Hub
-            </button>
             <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
               {angajat.nume_complet}
             </span>
@@ -147,6 +141,18 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
       />
 
       <main className="flex-1 max-w-6xl mx-auto px-6 py-8 w-full">
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault()
+            onBack()
+          }}
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
+        >
+          <ArrowLeft size={15} />
+          Înapoi la Hub
+        </a>
+
         {isHubAdmin && (
           <div className="mb-5 flex flex-wrap items-center gap-3 bg-white rounded-xl shadow-sm p-4">
             <button

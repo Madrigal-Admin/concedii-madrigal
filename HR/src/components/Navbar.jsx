@@ -1,4 +1,4 @@
-import { LogOut, ArrowLeft } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 export default function Navbar({ displayName, roleLabel, onLogout }) {
   return (
@@ -13,14 +13,6 @@ export default function Navbar({ displayName, roleLabel, onLogout }) {
         </div>
 
         <div className="site-header__right">
-          <a
-            href="/"
-            className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition whitespace-nowrap"
-          >
-            <ArrowLeft size={15} />
-            Înapoi la Hub
-          </a>
-
           {displayName && (
             <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
               {displayName}

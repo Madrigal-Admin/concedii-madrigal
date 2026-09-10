@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
@@ -107,6 +108,13 @@ function AdminApp() {
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
           <div className="mx-auto max-w-5xl">
+            <a
+              href="/"
+              className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
+            >
+              <ArrowLeft size={15} />
+              Înapoi la Hub
+            </a>
             {view === 'evenimente' && <EvenimenteTab role={role} session={session} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
             {view === 'checkin' && <CheckinTab />}

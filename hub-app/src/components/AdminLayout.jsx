@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut } from 'lucide-react'
+import { LogOut, ArrowLeft } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
@@ -21,12 +21,6 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
         title="Administrare Hub"
         right={
           <div className="flex items-center gap-2">
-            <button
-              onClick={onBackToDashboard}
-              className="text-sm bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap"
-            >
-              ← Înapoi la Hub
-            </button>
             {angajat && (
               <span className="hidden max-w-[220px] truncate rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-block">
                 {angajat.nume_complet}
@@ -45,7 +39,16 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
 
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <aside className="md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex-shrink-0">
-          <nav className="flex md:flex-col overflow-x-auto p-2 gap-1">
+          <div className="p-2">
+            <button
+              onClick={onBackToDashboard}
+              className="w-full flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+            >
+              <ArrowLeft size={15} />
+              Înapoi la Hub
+            </button>
+          </div>
+          <nav className="flex md:flex-col overflow-x-auto p-2 pt-0 gap-1">
             {SECTIONS.map((s) => (
               <button
                 key={s.key}
