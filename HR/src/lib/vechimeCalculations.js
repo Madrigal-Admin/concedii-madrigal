@@ -79,6 +79,53 @@ export function formatYMD({ years, months, days }) {
   }`
 }
 
+function ymdToNominalDays({ years, months, days }) {
+  return years * 360 + months * 30 + days
+}
+
+/** Data nașterii, dedusă din CNP-ul românesc (cifra 1 = secol/sex, apoi AALLZZ). */
+export function parseCnpBirthDate(cnp) {
+  if (!cnp || cnp.length < 7) return null
+  const s = parseInt(cnp[0], 10)
+  const yy = parseInt(cnp.slice(1, 3), 10)
+  const mm = parseInt(cnp.slice(3, 5), 10)
+  const dd = parseInt(cnp.slice(5, 7), 10)
+
+  let secol
+  if (s === 1 || s === 2) secol = 1900
+  else if (s === 3 || s === 4) secol = 1800
+  else if (s === 5 || s === 6) secol = 2000
+  else return null
+
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null
+
+  const an = secol + yy
+  return `${an}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
+}
+
+/** Data la care angajatul urmează să treacă la următoarea gradație (sau
+ * null dacă e deja la Gradația 5, maximă). Aproximativ (luni = 30 zile). */
+export function dataUrmatoareiGradatii(angajat, leaveRequestsFaraPlata) {
+  const rezultat = calculateVechime(angajat, leaveRequestsFaraPlata)
+  const curentNominal = ymdToNominalDays(rezultat.total)
+  const praguri = [3, 5, 10, 15, 20]
+  const urmatorulPrag = praguri.find((p) => p * 360 > curentNominal)
+  if (!urmatorulPrag) return null
+
+  const necesar = urmatorulPrag * 360 - curentNominal
+  const aniNecesari = Math.floor(necesar / 360)
+  const luniNecesare = Math.floor((necesar % 360) / 30)
+  const zileNecesare = necesar % 30
+
+  const dataTinta = new Date()
+  dataTinta.setFullYear(dataTinta.getFullYear() + aniNecesari)
+  dataTinta.setMonth(dataTinta.getMonth() + luniNecesare)
+  dataTinta.setDate(dataTinta.getDate() + zileNecesare)
+
+  const gradatieNoua = { 3: 1, 5: 2, 10: 3, 15: 4, 20: 5 }[urmatorulPrag]
+  return { data: dataTinta.toISOString().slice(0, 10), gradatieNoua }
+}
+
 export function gradatieDupaAni(ani) {
   if (ani >= 20) return 5
   if (ani >= 15) return 4
