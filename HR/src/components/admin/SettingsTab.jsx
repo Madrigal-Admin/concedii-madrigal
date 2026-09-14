@@ -110,13 +110,13 @@ export default function SettingsTab() {
 
       <section>
         <h3 className="mb-1 font-display text-lg font-semibold text-ink">
-          Liste prestabilite (departamente și funcții)
+          Liste prestabilite (departamente, funcții și atribuții)
         </h3>
         <p className="mb-4 text-sm text-slate-500">
           Aceste liste alimentează dropdown-urile din formularul de angajați, ca toată lumea să
           scrie departamentele și funcțiile la fel.
         </p>
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-3">
           <ListManager
             title="Departamente"
             table="departments"
@@ -126,6 +126,11 @@ export default function SettingsTab() {
             title="Funcții"
             table="positions"
             hint="ex: Corist, Dirijor, Corepetitor, Manager"
+          />
+          <ListManager
+            title="Atribuții"
+            table="attributions"
+            hint="ex: Șef de partidă, Bibliotecar, Reprezentant sindical"
           />
         </div>
       </section>
