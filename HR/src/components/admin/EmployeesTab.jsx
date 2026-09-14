@@ -241,8 +241,9 @@ function HrProfileEditor({ angajat, onClose, onSaved }) {
           <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
             <p className="text-xs font-semibold text-brand-800">Solduri (situația actuală)</p>
             <p className="mt-0.5 text-xs text-brand-700">
-              Aceste solduri NU avansează automat la 1 ianuarie și NU expiră automat la 30 iunie —
-              trebuie actualizate manual, o dată pe an.
+              Aceste solduri avansează automat la anul nou (verificat zilnic, în fundal) — zilele de
+              acum 2 ani expiră, cele de anul trecut devin „acum 2 ani", ș.a.m.d. Le poți edita oricând
+              manual, dacă e nevoie de o corecție.
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <div>
