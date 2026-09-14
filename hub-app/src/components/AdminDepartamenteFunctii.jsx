@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 export default function AdminDepartamenteFunctii() {
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
+  const [attributions, setAttributions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -12,12 +13,14 @@ export default function AdminDepartamenteFunctii() {
 
   async function loadAll() {
     setLoading(true)
-    const [deptRes, posRes] = await Promise.all([
+    const [deptRes, posRes, attrRes] = await Promise.all([
       supabase.from('departments').select('*').order('name'),
       supabase.from('positions').select('*').order('name'),
+      supabase.from('attributions').select('*').order('name'),
     ])
     setDepartments(deptRes.data || [])
     setPositions(posRes.data || [])
+    setAttributions(attrRes.data || [])
     setLoading(false)
   }
 
@@ -26,10 +29,10 @@ export default function AdminDepartamenteFunctii() {
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800 mb-6">
-        Departamente &amp; Funcții
+        Departamente, Funcții &amp; Atribuții
       </h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <ListEditor
           title="Departamente"
           table="departments"
@@ -40,6 +43,12 @@ export default function AdminDepartamenteFunctii() {
           title="Funcții"
           table="positions"
           items={positions}
+          onChange={loadAll}
+        />
+        <ListEditor
+          title="Atribuții"
+          table="attributions"
+          items={attributions}
           onChange={loadAll}
         />
       </div>

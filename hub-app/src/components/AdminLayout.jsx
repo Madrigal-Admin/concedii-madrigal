@@ -9,7 +9,7 @@ import SiteFooter from './SiteFooter'
 const SECTIONS = [
   { key: 'angajati', label: 'Angajați' },
   { key: 'acces', label: 'Acces Tool-uri' },
-  { key: 'departamente', label: 'Departamente & Funcții' },
+  { key: 'departamente', label: 'Departamente, Funcții & Atribuții' },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
