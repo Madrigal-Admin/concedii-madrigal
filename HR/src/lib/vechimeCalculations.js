@@ -85,7 +85,7 @@ export function gradatieDupaAni(ani) {
   if (ani >= 10) return 3
   if (ani >= 5) return 2
   if (ani >= 3) return 1
-  return null
+  return 0
 }
 
 /**
@@ -124,11 +124,15 @@ export function calculateVechime(angajat, leaveRequestsFaraPlata) {
 
   if (profil?.data_inceput_contract) {
     const azi = new Date().toISOString().slice(0, 10)
-    const ymd = diffYMD(profil.data_inceput_contract, azi)
+    // Dacă contractul (determinat) s-a încheiat deja, vechimea la Madrigal
+    // se oprește acolo, nu continuă "până azi".
+    const final =
+      profil.data_final_contract && profil.data_final_contract < azi ? profil.data_final_contract : azi
+    const ymd = diffYMD(profil.data_inceput_contract, final)
     surse.push({
       tip: 'institutie',
       label: 'Corul Madrigal',
-      metoda: `${profil.data_inceput_contract} → azi (${azi})`,
+      metoda: `${profil.data_inceput_contract} → ${final === azi ? `azi (${azi})` : final}`,
       ymd,
     })
     totalCalendaristic = addYMD(totalCalendaristic, ymd)

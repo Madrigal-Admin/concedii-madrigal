@@ -78,13 +78,9 @@ export default function VechimeTab() {
                     <td className="px-4 py-3 font-medium text-ink">{angajat.nume_complet}</td>
                     <td className="px-4 py-3 text-slate-700">{formatYMD(rezultat.total)}</td>
                     <td className="px-4 py-3">
-                      {rezultat.gradatie ? (
-                        <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
-                          Gradația {rezultat.gradatie}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400">Fără gradație (sub 3 ani)</span>
-                      )}
+                      <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
+                        Gradația {rezultat.gradatie}
+                      </span>
                     </td>
                   </tr>
 
