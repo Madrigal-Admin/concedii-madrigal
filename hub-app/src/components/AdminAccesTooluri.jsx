@@ -6,6 +6,7 @@ const TOOLS = [
   { key: 'hub', label: 'Hub', roles: ['admin'] },
   { key: 'hr', label: 'HR', roles: ['angajat', 'operational', 'full'] },
   { key: 'invitatii', label: 'Invitații', roles: ['full', 'checkin'] },
+  { key: 'administrativ', label: 'Administrativ', roles: ['full', 'angajat'] },
 ]
 
 const ROLE_LABELS = {

@@ -17,6 +17,12 @@ const TOOLS = [
     description: 'Gestionare invitații, confirmări și check-in.',
     href: '/invitatii/',
   },
+  {
+    tool: 'administrativ',
+    name: 'Administrativ',
+    description: 'Cereri de eliberare din magazie.',
+    href: '/administrativ/',
+  },
 ]
 
 export default function Dashboard({ angajat, accesTooluri, isHubAdmin, onOpenAdmin, onOpenCalendar, onSignOut }) {
