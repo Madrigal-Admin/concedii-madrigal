@@ -59,7 +59,10 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
       if (!res.ok) {
         setSyncMessage(result.error || 'Sincronizarea a eșuat.')
       } else {
-        setSyncMessage(`${result.sincronizate} evenimente sincronizate.`)
+        setSyncMessage(
+          `${result.sincronizate} evenimente sincronizate.` +
+            (result.orfaneSterse > 0 ? ` ${result.orfaneSterse} orfane (șterse din ClickUp) au fost curățate.` : '')
+        )
         load()
       }
     } catch {
