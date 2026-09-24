@@ -3,17 +3,11 @@ import { Pencil, Trash2, Plus, Save, X as XIcon, Upload } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import ImportExcelModal from './ImportExcelModal'
 
-const GESTIUNI = ['OBIECTE DE INVENTAR IN MAGAZIE', 'DECORURI', 'MARFURI']
-const GESTIUNE_LABEL = {
-  'OBIECTE DE INVENTAR IN MAGAZIE': 'Obiecte de inventar',
-  DECORURI: 'Decoruri',
-  MARFURI: 'Mărfuri',
-}
-
-const EMPTY_FORM = { gestiune: 'OBIECTE DE INVENTAR IN MAGAZIE', cod_inventar: '', denumire: '', cantitate: '', um: 'BUC' }
+const EMPTY_FORM = { gestiune_id: '', cod_inventar: '', denumire: '', cantitate: '', um: 'BUC' }
 
 export default function CatalogTab() {
   const [obiecte, setObiecte] = useState([])
+  const [gestiuni, setGestiuni] = useState([])
   const [loading, setLoading] = useState(true)
   const [cautare, setCautare] = useState('')
   const [filtruGestiune, setFiltruGestiune] = useState('')
@@ -22,6 +16,7 @@ export default function CatalogTab() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showImport, setShowImport] = useState(false)
+  const [gestiuneNoua, setGestiuneNoua] = useState('')
 
   useEffect(() => {
     load()
@@ -29,15 +24,19 @@ export default function CatalogTab() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('stoc_obiecte').select('*').order('denumire')
-    setObiecte(data || [])
+    const [{ data: obi }, { data: gest }] = await Promise.all([
+      supabase.from('stoc_obiecte').select('*, gestiune:stoc_gestiuni(name)').order('denumire'),
+      supabase.from('stoc_gestiuni').select('*').order('name'),
+    ])
+    setObiecte(obi || [])
+    setGestiuni(gest || [])
     setLoading(false)
   }
 
   function startEdit(o) {
     setEditingId(o.id)
     setForm({
-      gestiune: o.gestiune,
+      gestiune_id: o.gestiune_id || '',
       cod_inventar: o.cod_inventar || '',
       denumire: o.denumire,
       cantitate: o.cantitate,
@@ -51,14 +50,30 @@ export default function CatalogTab() {
     setError('')
   }
 
+  async function adaugaGestiune() {
+    if (!gestiuneNoua.trim()) return
+    const { data, error } = await supabase.from('stoc_gestiuni').insert({ name: gestiuneNoua.trim().toUpperCase() }).select().single()
+    if (!error && data) {
+      setGestiuni((g) => [...g, data].sort((a, b) => a.name.localeCompare(b.name)))
+      setForm((f) => ({ ...f, gestiune_id: data.id }))
+      setGestiuneNoua('')
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
     setError('')
 
+    if (!form.gestiune_id) {
+      setSaving(false)
+      setError('Alege o gestiune.')
+      return
+    }
+
     const payload = {
-      gestiune: form.gestiune,
-      cod_inventar: form.gestiune === 'MARFURI' ? null : form.cod_inventar.trim() || null,
+      gestiune_id: form.gestiune_id,
+      cod_inventar: form.cod_inventar.trim() || null,
       denumire: form.denumire.trim(),
       cantitate: Number(form.cantitate) || 0,
       um: form.um.trim() || 'BUC',
@@ -87,7 +102,7 @@ export default function CatalogTab() {
   const filtrate = obiecte.filter((o) => {
     const q = cautare.toLowerCase()
     const matchQ = !q || o.denumire.toLowerCase().includes(q) || o.cod_inventar?.toLowerCase().includes(q)
-    const matchGestiune = !filtruGestiune || o.gestiune === filtruGestiune
+    const matchGestiune = !filtruGestiune || o.gestiune_id === filtruGestiune
     return matchQ && matchGestiune
   })
 
@@ -107,25 +122,35 @@ export default function CatalogTab() {
         <div>
           <label className="mb-1 block text-sm text-slate-600">Gestiune</label>
           <select
-            value={form.gestiune}
-            onChange={(e) => setForm({ ...form, gestiune: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            value={form.gestiune_id}
+            onChange={(e) => setForm({ ...form, gestiune_id: e.target.value })}
+            className="mb-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           >
-            {GESTIUNI.map((g) => (
-              <option key={g} value={g}>{GESTIUNE_LABEL[g]}</option>
+            <option value="">— Alege —</option>
+            {gestiuni.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
-        </div>
-        {form.gestiune !== 'MARFURI' && (
-          <div>
-            <label className="mb-1 block text-sm text-slate-600">Cod inventar</label>
+          <div className="flex gap-1.5">
             <input
-              value={form.cod_inventar}
-              onChange={(e) => setForm({ ...form, cod_inventar: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              value={gestiuneNoua}
+              onChange={(e) => setGestiuneNoua(e.target.value)}
+              placeholder="Gestiune nouă..."
+              className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs"
             />
+            <button type="button" onClick={adaugaGestiune} className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200">
+              <Plus size={12} className="inline" />
+            </button>
           </div>
-        )}
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-slate-600">Cod inventar</label>
+          <input
+            value={form.cod_inventar}
+            onChange={(e) => setForm({ ...form, cod_inventar: e.target.value })}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        </div>
         <div className="sm:col-span-2">
           <label className="mb-1 block text-sm text-slate-600">Denumire</label>
           <input
@@ -187,8 +212,8 @@ export default function CatalogTab() {
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="">Toate gestiunile</option>
-          {GESTIUNI.map((g) => (
-            <option key={g} value={g}>{GESTIUNE_LABEL[g]}</option>
+          {gestiuni.map((g) => (
+            <option key={g.id} value={g.id}>{g.name}</option>
           ))}
         </select>
       </div>
@@ -212,7 +237,7 @@ export default function CatalogTab() {
               {filtrate.map((o) => (
                 <tr key={o.id} className="border-t border-slate-100">
                   <td className="px-4 py-3 text-slate-800">{o.denumire}</td>
-                  <td className="px-4 py-3 text-slate-500">{GESTIUNE_LABEL[o.gestiune]}</td>
+                  <td className="px-4 py-3 text-slate-500">{o.gestiune?.name || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{o.cod_inventar || '—'}</td>
                   <td className="px-4 py-3 text-slate-700">{o.cantitate}</td>
                   <td className="px-4 py-3 text-slate-500">{o.um}</td>

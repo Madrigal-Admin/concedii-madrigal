@@ -3,8 +3,6 @@ import * as XLSX from 'xlsx'
 import { X as XIcon, Upload } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 
-const GESTIUNI_VALIDE = ['OBIECTE DE INVENTAR IN MAGAZIE', 'DECORURI', 'MARFURI']
-
 function gasesteColoana(headerRow, cautari) {
   for (let i = 0; i < headerRow.length; i++) {
     const celula = String(headerRow[i] || '').toLowerCase().trim()
@@ -22,7 +20,6 @@ function gasesteColoanaExacta(headerRow, valori) {
 }
 
 function parseazaFisier(rows) {
-  // Găsim rândul de antet — cel care conține "denumire"
   const headerIdx = rows.findIndex((r) =>
     r.some((celula) => String(celula || '').toLowerCase().trim() === 'denumire')
   )
@@ -49,8 +46,8 @@ function parseazaFisier(rows) {
     const denumire = String(r[idxDenumire] || '').trim()
     if (!denumire) continue
 
-    const gestiune = String(r[idxGestiune] || '').toUpperCase().trim()
-    if (!GESTIUNI_VALIDE.includes(gestiune)) {
+    const gestiuneText = String(r[idxGestiune] || '').toUpperCase().trim()
+    if (!gestiuneText) {
       ignorate++
       continue
     }
@@ -60,7 +57,7 @@ function parseazaFisier(rows) {
       cod_inventar: idxCod !== -1 ? String(r[idxCod] || '').trim() || null : null,
       cantitate: Number(r[idxCantitate]) || 0,
       um: idxUm !== -1 ? String(r[idxUm] || '').trim() || 'BUC' : 'BUC',
-      gestiune,
+      gestiuneText,
     })
   }
 
@@ -71,6 +68,7 @@ export default function ImportExcelModal({ onClose, onImported }) {
   const [fileName, setFileName] = useState('')
   const [linii, setLinii] = useState(null)
   const [ignorate, setIgnorate] = useState(0)
+  const [gestiuniNoi, setGestiuniNoi] = useState([])
   const [conflicte, setConflicte] = useState([])
   const [noi, setNoi] = useState([])
   const [strategie, setStrategie] = useState('adauga')
@@ -94,23 +92,35 @@ export default function ImportExcelModal({ onClose, onImported }) {
       const { linii: liniiParse, ignorate: nrIgnorate } = parseazaFisier(rows)
       setIgnorate(nrIgnorate)
 
-      // verificăm ce există deja în catalog, ca să separăm noi / conflicte
+      const { data: gestiuniExistente } = await supabase.from('stoc_gestiuni').select('*')
+      const gestiuniMap = new Map((gestiuniExistente || []).map((g) => [g.name, g.id]))
+
+      const numeGestiuniNoi = [...new Set(liniiParse.map((l) => l.gestiuneText))].filter((nume) => !gestiuniMap.has(nume))
+      setGestiuniNoi(numeGestiuniNoi)
+
+      if (numeGestiuniNoi.length > 0) {
+        const { data: create } = await supabase.from('stoc_gestiuni').insert(numeGestiuniNoi.map((name) => ({ name }))).select()
+        for (const g of create || []) gestiuniMap.set(g.name, g.id)
+      }
+
+      const liniiCuId = liniiParse.map((l) => ({ ...l, gestiune_id: gestiuniMap.get(l.gestiuneText) }))
+
       const { data: existente } = await supabase.from('stoc_obiecte').select('*')
 
       const cu = []
       const nou = []
-      for (const linie of liniiParse) {
+      for (const linie of liniiCuId) {
         const match = (existente || []).find((e) => {
           if (linie.cod_inventar && e.cod_inventar) {
-            return e.gestiune === linie.gestiune && e.cod_inventar === linie.cod_inventar
+            return e.gestiune_id === linie.gestiune_id && e.cod_inventar === linie.cod_inventar
           }
-          return e.gestiune === linie.gestiune && e.denumire.toLowerCase() === linie.denumire.toLowerCase()
+          return e.gestiune_id === linie.gestiune_id && e.denumire.toLowerCase() === linie.denumire.toLowerCase()
         })
         if (match) cu.push({ linie, existent: match })
         else nou.push(linie)
       }
 
-      setLinii(liniiParse)
+      setLinii(liniiCuId)
       setConflicte(cu)
       setNoi(nou)
     } catch (err) {
@@ -123,7 +133,9 @@ export default function ImportExcelModal({ onClose, onImported }) {
     setImporting(true)
 
     if (noi.length > 0) {
-      await supabase.from('stoc_obiecte').insert(noi)
+      await supabase.from('stoc_obiecte').insert(
+        noi.map(({ denumire, cod_inventar, cantitate, um, gestiune_id }) => ({ denumire, cod_inventar, cantitate, um, gestiune_id }))
+      )
     }
 
     for (const { linie, existent } of conflicte) {
@@ -163,7 +175,7 @@ export default function ImportExcelModal({ onClose, onImported }) {
 
         <p className="mb-3 text-xs text-slate-500">
           Fișier .xlsx cu coloanele Denumire, Cantitate, UM, Gestiune (și opțional Cod produs/Număr
-          inventar). Funcționează cu exporturile reale de stocuri, ca structură.
+          inventar). Dacă apare o gestiune nouă în fișier, o adaug automat la listă.
         </p>
 
         <input
@@ -179,8 +191,13 @@ export default function ImportExcelModal({ onClose, onImported }) {
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
               <strong>{fileName}</strong> — {linii.length} articole citite
-              {ignorate > 0 ? `, ${ignorate} ignorate (gestiune necunoscută)` : ''}.
+              {ignorate > 0 ? `, ${ignorate} ignorate (fără gestiune specificată)` : ''}.
             </p>
+            {gestiuniNoi.length > 0 && (
+              <p className="text-xs text-accent">
+                Gestiuni noi, adăugate automat: {gestiuniNoi.join(', ')}
+              </p>
+            )}
             <p className="text-sm text-slate-600">
               <strong className="text-green-700">{noi.length}</strong> articole noi ·{' '}
               <strong className="text-amber-700">{conflicte.length}</strong> deja există în catalog
