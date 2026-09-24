@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2, Plus, Save, X as XIcon, Upload } from 'lucide-react'
+import { Pencil, Trash2, Plus, Save, X as XIcon, Upload, Settings } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import ImportExcelModal from './ImportExcelModal'
+import ListEditorModal from './ListEditorModal'
 
 const EMPTY_FORM = { gestiune_id: '', cod_inventar: '', denumire: '', cantitate: '', um: 'BUC' }
 
@@ -17,6 +18,7 @@ export default function CatalogTab() {
   const [error, setError] = useState('')
   const [showImport, setShowImport] = useState(false)
   const [gestiuneNoua, setGestiuneNoua] = useState('')
+  const [showManageGestiuni, setShowManageGestiuni] = useState(false)
 
   useEffect(() => {
     load()
@@ -140,6 +142,14 @@ export default function CatalogTab() {
             />
             <button type="button" onClick={adaugaGestiune} className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200">
               <Plus size={12} className="inline" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowManageGestiuni(true)}
+              title="Gestionează lista (adaugă/șterge)"
+              className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200"
+            >
+              <Settings size={12} className="inline" />
             </button>
           </div>
         </div>
@@ -267,6 +277,15 @@ export default function CatalogTab() {
             setShowImport(false)
             load()
           }}
+        />
+      )}
+      {showManageGestiuni && (
+        <ListEditorModal
+          title="Gestiuni"
+          table="stoc_gestiuni"
+          items={gestiuni}
+          onClose={() => setShowManageGestiuni(false)}
+          onChanged={load}
         />
       )}
     </div>

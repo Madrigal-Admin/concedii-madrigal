@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Bell, Pencil, Trash2, Plus, Save, X as XIcon } from 'lucide-react'
+import { Bell, Pencil, Trash2, Plus, Save, X as XIcon, Settings } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import ListEditorModal from './ListEditorModal'
 
 const EMPTY_FORM = { categorie_id: '', locatie_id: '', denumire: '', data_ultima_verificare: '', data_urmatoarea_verificare: '' }
 const AZI = new Date().toISOString().slice(0, 10)
@@ -29,6 +30,8 @@ export default function MentenantaTab() {
   const [saving, setSaving] = useState(false)
   const [categorieNoua, setCategorieNoua] = useState('')
   const [locatieNoua, setLocatieNoua] = useState('')
+  const [showManageCategorii, setShowManageCategorii] = useState(false)
+  const [showManageLocatii, setShowManageLocatii] = useState(false)
 
   useEffect(() => {
     load()
@@ -158,6 +161,14 @@ export default function MentenantaTab() {
             <button type="button" onClick={adaugaCategorie} className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200">
               <Plus size={12} className="inline" />
             </button>
+            <button
+              type="button"
+              onClick={() => setShowManageCategorii(true)}
+              title="Gestionează lista"
+              className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200"
+            >
+              <Settings size={12} className="inline" />
+            </button>
           </div>
         </div>
 
@@ -182,6 +193,14 @@ export default function MentenantaTab() {
             />
             <button type="button" onClick={adaugaLocatie} className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200">
               <Plus size={12} className="inline" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowManageLocatii(true)}
+              title="Gestionează lista"
+              className="rounded-lg bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200"
+            >
+              <Settings size={12} className="inline" />
             </button>
           </div>
         </div>
@@ -275,6 +294,25 @@ export default function MentenantaTab() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showManageCategorii && (
+        <ListEditorModal
+          title="Categorii"
+          table="registru_mentenanta_categorii"
+          items={categorii}
+          onClose={() => setShowManageCategorii(false)}
+          onChanged={load}
+        />
+      )}
+      {showManageLocatii && (
+        <ListEditorModal
+          title="Locații"
+          table="registru_mentenanta_locatii"
+          items={locatii}
+          onClose={() => setShowManageLocatii(false)}
+          onChanged={load}
+        />
       )}
     </div>
   )
