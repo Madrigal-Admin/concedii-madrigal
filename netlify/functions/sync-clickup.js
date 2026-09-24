@@ -73,17 +73,28 @@ export async function handler(event) {
   const { tasks } = await listRes.json()
 
   // 4. Pentru fiecare task, luăm detaliile complete (inclusiv custom fields)
-  const evenimente = []
-  for (const task of tasks) {
+  // — în loturi paralele, nu unul câte unul, ca sincronizarea să nu mai
+  // depășească limita de timp a funcției pe măsură ce numărul de
+  // evenimente din ClickUp crește.
+  async function inLoturi(items, marimeLot, fn) {
+    const rezultate = []
+    for (let i = 0; i < items.length; i += marimeLot) {
+      const lot = items.slice(i, i + marimeLot)
+      rezultate.push(...(await Promise.all(lot.map(fn))))
+    }
+    return rezultate
+  }
+
+  const evenimenteRezultate = await inLoturi(tasks, 10, async (task) => {
     const detailRes = await fetch(`https://api.clickup.com/api/v2/task/${task.id}`, {
       headers: { Authorization: CLICKUP_TOKEN },
     })
-    if (!detailRes.ok) continue
+    if (!detailRes.ok) return null
     const detail = await detailRes.json()
 
     const fieldValue = (fieldId) => detail.custom_fields?.find((f) => f.id === fieldId)?.value
 
-    evenimente.push({
+    return {
       clickup_task_id: task.id,
       nume: task.name,
       data: task.due_date ? new Date(Number(task.due_date)).toISOString().slice(0, 10) : null,
@@ -93,8 +104,9 @@ export async function handler(event) {
       bilete: BILETE_OPTIONS[fieldValue(FIELD_BILETE)] ?? null,
       implicare: IMPLICARE_OPTIONS[fieldValue(FIELD_IMPLICARE)] || null,
       ultima_sincronizare: new Date().toISOString(),
-    })
-  }
+    }
+  })
+  const evenimente = evenimenteRezultate.filter(Boolean)
 
   // 5. Upsert în Supabase — NU trimitem necesita_rsvp/necesita_costume,
   // ca să nu suprascriem flag-urile setate manual de admin.
@@ -117,5 +129,37 @@ export async function handler(event) {
     return json(502, { error: 'Nu am putut scrie în Supabase.', detaliu: errText })
   }
 
-  return json(200, { ok: true, sincronizate: evenimente.length })
+  // 6. Curățăm evenimentele "orfane" — sincronizate cândva dintr-un task
+  // ClickUp care nu mai există acum (ex. era un duplicat, șters ulterior
+  // din ClickUp). Nu ștergem niciodată un eveniment care are invitații
+  // legate — păstrăm istoricul de RSVP intact, chiar dacă task-ul original
+  // a dispărut din ClickUp.
+  let orfaneSterse = 0
+  const idCurente = evenimente.map((e) => e.clickup_task_id)
+  if (idCurente.length > 0) {
+    const listaId = idCurente.map((id) => `"${id}"`).join(',')
+    const orphanRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/evenimente?clickup_task_id=not.is.null&clickup_task_id=not.in.(${listaId})&select=id,nume,clickup_task_id`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+    )
+    if (orphanRes.ok) {
+      const orfane = await orphanRes.json()
+      for (const orfan of orfane) {
+        const invRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/invitatii?eveniment_id=eq.${orfan.id}&select=id&limit=1`,
+          { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+        )
+        const invitatiiLegate = invRes.ok ? await invRes.json() : []
+        if (invitatiiLegate.length === 0) {
+          await fetch(`${SUPABASE_URL}/rest/v1/evenimente?id=eq.${orfan.id}`, {
+            method: 'DELETE',
+            headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+          })
+          orfaneSterse++
+        }
+      }
+    }
+  }
+
+  return json(200, { ok: true, sincronizate: evenimente.length, orfaneSterse })
 }
