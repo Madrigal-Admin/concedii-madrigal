@@ -1,5 +1,5 @@
 const SECTIONS = [
-  { key: 'cereri', label: 'Cererile mele', roles: ['angajat'] },
+  { key: 'cereri', label: 'Cererile mele', roles: ['angajat', 'full'] },
   { key: 'catalog', label: 'Catalog stocuri', roles: ['full'] },
   { key: 'cereri-admin', label: 'Cereri de aprobat', roles: ['full'] },
   { key: 'mentenanta', label: 'Registru mentenanță', roles: ['full'] },

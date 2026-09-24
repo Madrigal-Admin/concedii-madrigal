@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2, Plus, Save, X as XIcon } from 'lucide-react'
+import { Pencil, Trash2, Plus, Save, X as XIcon, Upload } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import ImportExcelModal from './ImportExcelModal'
 
 const GESTIUNI = ['OBIECTE DE INVENTAR IN MAGAZIE', 'DECORURI', 'MARFURI']
 const GESTIUNE_LABEL = {
@@ -20,6 +21,7 @@ export default function CatalogTab() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
     load()
@@ -91,7 +93,15 @@ export default function CatalogTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-slate-800">Catalog stocuri</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-slate-800">Catalog stocuri</h2>
+        <button
+          onClick={() => setShowImport(true)}
+          className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+        >
+          <Upload size={13} /> Importă din Excel
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-1 gap-4 rounded-xl bg-white p-5 shadow-sm sm:grid-cols-2">
         <div>
@@ -224,6 +234,15 @@ export default function CatalogTab() {
             </tbody>
           </table>
         </div>
+      )}
+      {showImport && (
+        <ImportExcelModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            setShowImport(false)
+            load()
+          }}
+        />
       )}
     </div>
   )

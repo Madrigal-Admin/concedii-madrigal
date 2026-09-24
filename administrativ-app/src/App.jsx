@@ -4,7 +4,9 @@ import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import CatalogTab from './components/CatalogTab'
-import ComingSoon from './components/ComingSoon'
+import CereriTab from './components/CereriTab'
+import CereriAdminTab from './components/CereriAdminTab'
+import MentenantaTab from './components/MentenantaTab'
 
 const ROLE_LABELS = { full: 'Admin', angajat: 'Angajat' }
 
@@ -34,7 +36,7 @@ export default function App() {
     setCheckingRole(true)
     const { data: angajatRow } = await supabase
       .from('angajati')
-      .select('*')
+      .select('*, department:departments(name)')
       .eq('user_id', session.user.id)
       .maybeSingle()
 
@@ -101,9 +103,9 @@ export default function App() {
 
           <div className="mx-auto max-w-5xl">
             {view === 'catalog' && role === 'full' && <CatalogTab />}
-            {view === 'cereri-admin' && role === 'full' && <ComingSoon title="Cereri de aprobat" />}
-            {view === 'mentenanta' && role === 'full' && <ComingSoon title="Registru mentenanță" />}
-            {view === 'cereri' && <ComingSoon title="Cererile mele" />}
+            {view === 'cereri-admin' && role === 'full' && <CereriAdminTab />}
+            {view === 'mentenanta' && role === 'full' && <MentenantaTab />}
+            {view === 'cereri' && <CereriTab angajat={angajat} />}
           </div>
         </main>
       </div>
