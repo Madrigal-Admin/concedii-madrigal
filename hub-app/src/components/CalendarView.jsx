@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LogOut, RefreshCw, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
+import { LogOut, RefreshCw, ChevronLeft, ChevronRight, ArrowLeft, Settings, X as XIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
@@ -15,6 +15,7 @@ const LUNI = [
   'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie',
 ]
+const CULORI_PRESTABILITE = ['#7F77DD', '#1D9E75', '#D85A30', '#D4537E', '#378ADD', '#BA7517', '#639922', '#5F5E5A']
 
 function formatData(dataStr) {
   if (!dataStr) return '—'
@@ -25,8 +26,17 @@ function ymd(date) {
   return date.toISOString().slice(0, 10)
 }
 
-export default function CalendarView({ angajat, isHubAdmin, session, onBack, onSignOut }) {
+function initialeTag(tag) {
+  const cuvinte = tag.trim().split(/\s+/)
+  if (cuvinte.length === 1) return cuvinte[0].slice(0, 3).toUpperCase()
+  return cuvinte.slice(0, 2).map((c) => c[0]).join('').toUpperCase()
+}
+
+export default function CalendarView({ angajat, canManageCalendar, session, onBack, onSignOut }) {
   const [evenimente, setEvenimente] = useState([])
+  const [tagCulori, setTagCulori] = useState({}) // { tag: '#hex' }
+  const [tagFilter, setTagFilter] = useState(null) // null = toate active; altfel Set<string>
+  const [showTagManager, setShowTagManager] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
@@ -42,9 +52,30 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('evenimente').select('*').order('data', { ascending: true })
-    setEvenimente(data || [])
+    const [{ data: ev }, { data: culori }] = await Promise.all([
+      supabase.from('evenimente').select('*').order('data', { ascending: true }),
+      supabase.from('evenimente_tag_culori').select('*'),
+    ])
+    setEvenimente(ev || [])
+    setTagCulori(Object.fromEntries((culori || []).map((c) => [c.tag, c.culoare])))
     setLoading(false)
+  }
+
+  const toateTagurile = useMemo(() => {
+    const set = new Set()
+    for (const e of evenimente) for (const t of e.tags || []) set.add(t)
+    return [...set].sort()
+  }, [evenimente])
+
+  const tagActive = tagFilter === null ? new Set(toateTagurile) : tagFilter
+
+  function toggleTagFilter(tag) {
+    setTagFilter((prev) => {
+      const curent = prev === null ? new Set(toateTagurile) : new Set(prev)
+      if (curent.has(tag)) curent.delete(tag)
+      else curent.add(tag)
+      return curent
+    })
   }
 
   async function handleSync() {
@@ -76,23 +107,28 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
     await supabase.from('evenimente').update({ [field]: value }).eq('id', id)
   }
 
+  // Evenimentele fără taguri rămân mereu vizibile — filtrul se aplică
+  // doar celor cu cel puțin un tag.
+  const evenimenteVizibile = useMemo(
+    () => evenimente.filter((e) => !e.tags?.length || e.tags.some((t) => tagActive.has(t))),
+    [evenimente, tagActive]
+  )
+
   const evenimenteByDate = useMemo(() => {
     const map = {}
-    for (const e of evenimente) {
+    for (const e of evenimenteVizibile) {
       if (!e.data) continue
       if (!map[e.data]) map[e.data] = []
       map[e.data].push(e)
     }
     return map
-  }, [evenimente])
+  }, [evenimenteVizibile])
 
-  // Grila lunii curente — inclusiv "padding" cu zile din lunile vecine,
-  // ca să înceapă mereu luni și să se termine duminică.
   const zileGrila = useMemo(() => {
     const primaZi = new Date(lunaCurenta.getFullYear(), lunaCurenta.getMonth(), 1)
     const ultimaZi = new Date(lunaCurenta.getFullYear(), lunaCurenta.getMonth() + 1, 0)
 
-    const offsetStart = (primaZi.getDay() + 6) % 7 // luni=0
+    const offsetStart = (primaZi.getDay() + 6) % 7
     const start = new Date(primaZi)
     start.setDate(start.getDate() - offsetStart)
 
@@ -113,10 +149,9 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
 
   const evenimenteAfisate = useMemo(() => {
     if (ziuaSelectata) return evenimenteByDate[ziuaSelectata] || []
-    // implicit: toate evenimentele din luna afișată, sortate cronologic
     const prefix = `${lunaCurenta.getFullYear()}-${String(lunaCurenta.getMonth() + 1).padStart(2, '0')}`
-    return evenimente.filter((e) => e.data?.startsWith(prefix))
-  }, [ziuaSelectata, evenimenteByDate, evenimente, lunaCurenta])
+    return evenimenteVizibile.filter((e) => e.data?.startsWith(prefix))
+  }, [ziuaSelectata, evenimenteByDate, evenimenteVizibile, lunaCurenta])
 
   function schimbaLuna(delta) {
     setLunaCurenta((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
@@ -156,7 +191,7 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
           Înapoi la Hub
         </a>
 
-        {isHubAdmin && (
+        {canManageCalendar && (
           <div className="mb-5 flex flex-wrap items-center gap-3 bg-white rounded-xl shadow-sm p-4">
             <button
               onClick={handleSync}
@@ -166,7 +201,41 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
               <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
               {syncing ? 'Se sincronizează...' : 'Sincronizează evenimente'}
             </button>
+            <p className="text-xs text-slate-400">Automat, în fiecare luni.</p>
             {syncMessage && <p className="text-sm text-slate-500">{syncMessage}</p>}
+          </div>
+        )}
+
+        {toateTagurile.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center gap-2 bg-white rounded-xl shadow-sm p-3">
+            <span className="text-xs font-medium text-slate-500 mr-1">Taguri:</span>
+            {toateTagurile.map((tag) => {
+              const activ = tagActive.has(tag)
+              const culoare = tagCulori[tag] || '#94a3b8'
+              return (
+                <button
+                  key={tag}
+                  onClick={() => toggleTagFilter(tag)}
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition"
+                  style={{
+                    backgroundColor: activ ? `${culoare}22` : '#f1f5f9',
+                    color: activ ? culoare : '#94a3b8',
+                  }}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: activ ? culoare : '#cbd5e1' }} />
+                  {tag}
+                </button>
+              )
+            })}
+            {canManageCalendar && (
+              <button
+                onClick={() => setShowTagManager(true)}
+                title="Gestionează culorile tagurilor"
+                className="ml-auto rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200"
+              >
+                <Settings size={13} />
+              </button>
+            )}
           </div>
         )}
 
@@ -174,22 +243,15 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
           <p className="text-sm text-slate-400">Se încarcă...</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
-            {/* Grila lunară */}
             <div className="bg-white rounded-2xl shadow-sm p-5">
               <div className="mb-4 flex items-center justify-between">
-                <button
-                  onClick={() => schimbaLuna(-1)}
-                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
-                >
+                <button onClick={() => schimbaLuna(-1)} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
                   <ChevronLeft size={18} />
                 </button>
                 <p className="font-display text-base font-semibold text-slate-800">
                   {LUNI[lunaCurenta.getMonth()]} {lunaCurenta.getFullYear()}
                 </p>
-                <button
-                  onClick={() => schimbaLuna(1)}
-                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
-                >
+                <button onClick={() => schimbaLuna(1)} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
                   <ChevronRight size={18} />
                 </button>
               </div>
@@ -204,25 +266,45 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
                 {zileGrila.map((zi) => {
                   const dataStr = ymd(zi)
                   const inLuna = zi.getMonth() === lunaCurenta.getMonth()
-                  const areEvenimente = !!evenimenteByDate[dataStr]
+                  const evZi = evenimenteByDate[dataStr] || []
                   const esteAzi = dataStr === azi
                   const esteSelectata = dataStr === ziuaSelectata
+
+                  const tagurileZilei = [...new Set(evZi.flatMap((e) => (e.tags?.length ? e.tags : ['__fără_tag__'])))]
 
                   return (
                     <button
                       key={dataStr}
                       onClick={() => setZiuaSelectata(esteSelectata ? null : dataStr)}
-                      className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm transition ${
+                      className={`aspect-square rounded-lg flex flex-col items-center justify-start pt-1.5 text-sm transition ${
                         !inLuna ? 'text-slate-300' : 'text-slate-700'
                       } ${esteSelectata ? 'bg-accent text-white' : esteAzi ? 'bg-accent/10 text-accent font-semibold' : 'hover:bg-slate-50'}`}
                     >
                       {zi.getDate()}
-                      {areEvenimente && (
-                        <span
-                          className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
-                            esteSelectata ? 'bg-white' : 'bg-accent'
-                          }`}
-                        />
+                      {tagurileZilei.length > 0 && (
+                        <div className="mt-1 flex flex-col items-center gap-0.5 w-full px-1">
+                          {tagurileZilei.slice(0, 2).map((tag) =>
+                            tag === '__fără_tag__' ? (
+                              <span key={tag} className={`h-1.5 w-1.5 rounded-full ${esteSelectata ? 'bg-white' : 'bg-slate-400'}`} />
+                            ) : (
+                              <span
+                                key={tag}
+                                className="w-full truncate rounded text-[9px] font-semibold leading-tight px-0.5"
+                                style={{
+                                  backgroundColor: esteSelectata ? 'rgba(255,255,255,0.25)' : `${tagCulori[tag] || '#94a3b8'}22`,
+                                  color: esteSelectata ? '#fff' : tagCulori[tag] || '#64748b',
+                                }}
+                              >
+                                {initialeTag(tag)}
+                              </span>
+                            )
+                          )}
+                          {tagurileZilei.length > 2 && (
+                            <span className={`text-[9px] ${esteSelectata ? 'text-white/80' : 'text-slate-400'}`}>
+                              +{tagurileZilei.length - 2}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </button>
                   )
@@ -230,7 +312,6 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
               </div>
             </div>
 
-            {/* Lista de evenimente */}
             <div className="bg-white rounded-2xl shadow-sm p-5">
               <div className="mb-3 flex items-center justify-between">
                 <p className="font-display text-sm font-semibold text-slate-800">
@@ -262,7 +343,26 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
                           <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full ${status.className}`}>{status.label}</span>
                         </div>
 
-                        {isHubAdmin && (
+                        {(e.tags?.length > 0 || e.implicare) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {e.tags?.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                style={{ backgroundColor: `${tagCulori[tag] || '#94a3b8'}22`, color: tagCulori[tag] || '#64748b' }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {e.implicare && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                                {e.implicare}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {canManageCalendar && (
                           <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
                             <label className="flex items-center gap-1.5">
                               <input
@@ -292,7 +392,54 @@ export default function CalendarView({ angajat, isHubAdmin, session, onBack, onS
         )}
       </main>
 
+      {showTagManager && (
+        <TagColorManager
+          taguri={toateTagurile}
+          culori={tagCulori}
+          onClose={() => setShowTagManager(false)}
+          onChanged={load}
+        />
+      )}
+
       <SiteFooter />
+    </div>
+  )
+}
+
+function TagColorManager({ taguri, culori, onClose, onChanged }) {
+  async function schimbaCuloare(tag, culoare) {
+    await supabase.from('evenimente_tag_culori').upsert({ tag, culoare })
+    onChanged()
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-800">Culori taguri</h3>
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
+            <XIcon size={16} />
+          </button>
+        </div>
+        <div className="space-y-3">
+          {taguri.map((tag) => (
+            <div key={tag} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-slate-700">{tag}</span>
+              <div className="flex items-center gap-1.5">
+                {CULORI_PRESTABILITE.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => schimbaCuloare(tag, c)}
+                    className="h-5 w-5 rounded-full ring-offset-1"
+                    style={{ backgroundColor: c, boxShadow: culori[tag] === c ? `0 0 0 2px white, 0 0 0 3.5px ${c}` : 'none' }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+          {taguri.length === 0 && <p className="text-sm text-slate-400">Niciun tag sincronizat încă.</p>}
+        </div>
+      </div>
     </div>
   )
 }

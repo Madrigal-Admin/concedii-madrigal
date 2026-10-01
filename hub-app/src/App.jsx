@@ -115,6 +115,7 @@ export default function App() {
   }
 
   const isHubAdmin = accesTooluri.some((a) => a.tool === 'hub' && a.rol === 'admin')
+  const canManageCalendar = accesTooluri.some((a) => a.tool === 'hub' && ['admin', 'calendar'].includes(a.rol))
 
   if (view === 'admin' && isHubAdmin) {
     return (
@@ -130,7 +131,7 @@ export default function App() {
     return (
       <CalendarView
         angajat={angajat}
-        isHubAdmin={isHubAdmin}
+        canManageCalendar={canManageCalendar}
         session={session}
         onBack={() => navigateTo('dashboard')}
         onSignOut={handleSignOut}
