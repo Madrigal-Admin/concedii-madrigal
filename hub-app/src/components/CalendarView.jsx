@@ -40,6 +40,7 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [debugResult, setDebugResult] = useState(null)
   const [lunaCurenta, setLunaCurenta] = useState(() => {
     const azi = new Date()
     return new Date(azi.getFullYear(), azi.getMonth(), 1)
@@ -100,6 +101,13 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
       setSyncMessage('Nu am putut contacta funcția de sincronizare.')
     }
     setSyncing(false)
+  }
+
+  async function handleDebugImplicare() {
+    const res = await fetch('/.netlify/functions/debug-implicare', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    setDebugResult(await res.json())
   }
 
   async function toggleFlag(id, field, value) {
@@ -203,7 +211,19 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
             </button>
             <p className="text-xs text-slate-400">Automat, în fiecare luni.</p>
             {syncMessage && <p className="text-sm text-slate-500">{syncMessage}</p>}
+            <button
+              onClick={handleDebugImplicare}
+              className="ml-auto rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-200"
+            >
+              (temp) Diagnostic Implicare
+            </button>
           </div>
+        )}
+
+        {debugResult && (
+          <pre className="mb-5 overflow-x-auto rounded-xl bg-slate-900 p-4 text-xs text-slate-100">
+            {JSON.stringify(debugResult, null, 2)}
+          </pre>
         )}
 
         {toateTagurile.length > 0 && (
