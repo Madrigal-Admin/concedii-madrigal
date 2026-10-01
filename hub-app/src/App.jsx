@@ -115,7 +115,7 @@ export default function App() {
   }
 
   const isHubAdmin = accesTooluri.some((a) => a.tool === 'hub' && a.rol === 'admin')
-  const canManageCalendar = accesTooluri.some((a) => a.tool === 'hub' && ['admin', 'calendar'].includes(a.rol))
+  const canManageCalendar = isHubAdmin || accesTooluri.some((a) => a.tool === 'calendar' && a.rol === 'admin')
 
   if (view === 'admin' && isHubAdmin) {
     return (

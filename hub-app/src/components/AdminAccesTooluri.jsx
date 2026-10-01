@@ -3,15 +3,15 @@ import { supabase } from '../supabaseClient'
 
 // Rolurile posibile per tool. '' înseamnă "fără acces".
 const TOOLS = [
-  { key: 'hub', label: 'Hub', roles: ['admin', 'calendar'] },
+  { key: 'hub', label: 'Hub', roles: ['admin'] },
   { key: 'hr', label: 'HR', roles: ['angajat', 'operational', 'full'] },
   { key: 'invitatii', label: 'Invitații', roles: ['full', 'checkin'] },
   { key: 'administrativ', label: 'Administrativ', roles: ['full', 'angajat'] },
+  { key: 'calendar', label: 'Calendar', roles: ['admin'] },
 ]
 
 const ROLE_LABELS = {
   admin: 'Admin',
-  calendar: 'Admin Calendar',
   angajat: 'Angajat',
   operational: 'Operațional',
   full: 'Admin complet',

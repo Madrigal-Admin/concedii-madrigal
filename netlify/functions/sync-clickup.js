@@ -44,14 +44,15 @@ export async function handler(event) {
   if (!userRes.ok) return json(401, { error: 'Sesiune invalidă.' })
   const user = await userRes.json()
 
-  // 2. Verificăm că e admin Hub SAU admin Calendar
-  // (acces_tooluri, tool='hub', rol='admin'|'calendar')
+  // 2. Verificăm că e admin Hub SAU admin Calendar (tool separat)
   const checkRes = await fetch(
     `${SUPABASE_URL}/rest/v1/angajati?user_id=eq.${user.id}&select=id,acces_tooluri(tool,rol)`,
     { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
   )
   const [angajat] = await checkRes.json()
-  const poateSincroniza = angajat?.acces_tooluri?.some((a) => a.tool === 'hub' && ['admin', 'calendar'].includes(a.rol))
+  const poateSincroniza = angajat?.acces_tooluri?.some(
+    (a) => (a.tool === 'hub' && a.rol === 'admin') || (a.tool === 'calendar' && a.rol === 'admin')
+  )
   if (!poateSincroniza) return json(403, { error: 'Nu ai drepturi de sincronizare a calendarului.' })
 
   // 3. Sincronizarea propriu-zisă
