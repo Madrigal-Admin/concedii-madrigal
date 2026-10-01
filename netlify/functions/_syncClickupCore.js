@@ -11,14 +11,15 @@ const FIELD_BILETE = '430b6d22-0775-4ec2-b60a-4ba4b2877e51'
 const FIELD_IMPLICARE = 'fa796353-2d09-40b4-a6aa-ff8774363f32'
 const FIELD_ORGANIZATOR = '788d75b8-9e47-46d9-93fc-08fc37ed1fb2'
 
-const BILETE_OPTIONS = {
-  'b9709b5d-cf47-4fbf-ade9-270244530711': true, // DA
-  'e10e2a80-6e43-4e14-b7fe-ae111ce707cf': false, // NU
-}
-const IMPLICARE_OPTIONS = {
-  '06def7e1-2b95-4f00-a7b7-07d6597c3146': 'Organizator',
-  'a7a0b82c-e22e-4b9f-8e06-ab2fd4d70b8c': 'Partener',
-  'c40c8713-86fc-4a9b-a30e-bac91ffd8a22': 'Invitat',
+// Pentru câmpuri ClickUp de tip "drop_down", API-ul NU trimite ID-ul
+// opțiunii ca valoare — trimite poziția ei (0, 1, 2...) în lista de
+// opțiuni a câmpului. Citim deci opțiunile chiar din răspunsul task-ului
+// (type_config.options), nu dintr-un tabel fix de ID-uri — robust și la
+// o eventuală reordonare a opțiunilor în ClickUp, pe viitor.
+function valoareDropdown(detail, fieldId) {
+  const camp = detail.custom_fields?.find((f) => f.id === fieldId)
+  if (!camp || camp.value === null || camp.value === undefined) return null
+  return camp.type_config?.options?.[camp.value]?.name ?? null
 }
 
 // Culori implicite, atribuite automat (în ordine) unui tag nou, întâlnit
@@ -55,6 +56,8 @@ export async function syncClickup({ SUPABASE_URL, SERVICE_KEY, CLICKUP_TOKEN }) 
 
     const fieldValue = (fieldId) => detail.custom_fields?.find((f) => f.id === fieldId)?.value
 
+    const bileteNume = valoareDropdown(detail, FIELD_BILETE)
+
     return {
       clickup_task_id: task.id,
       nume: task.name,
@@ -62,8 +65,8 @@ export async function syncClickup({ SUPABASE_URL, SERVICE_KEY, CLICKUP_TOKEN }) 
       status: task.status?.status || task.status,
       locatie: fieldValue(FIELD_LOCATIE) || null,
       responsabil: fieldValue(FIELD_ORGANIZATOR) || task.assignees?.[0]?.username || null,
-      bilete: BILETE_OPTIONS[fieldValue(FIELD_BILETE)] ?? null,
-      implicare: IMPLICARE_OPTIONS[fieldValue(FIELD_IMPLICARE)] || null,
+      bilete: bileteNume == null ? null : /^da|yes/i.test(bileteNume),
+      implicare: valoareDropdown(detail, FIELD_IMPLICARE),
       tags: (task.tags || []).map((t) => t.name),
       ultima_sincronizare: new Date().toISOString(),
     }
