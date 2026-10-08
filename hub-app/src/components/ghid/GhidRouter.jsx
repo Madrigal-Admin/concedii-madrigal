@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import GhidModal from './GhidModal'
 import PlaceholderContinut from './PlaceholderContinut'
 import InformatiiResurseUmane from './InformatiiResurseUmane'
+import EchipaLista from './EchipaLista'
+import LinkuriUtile from './LinkuriUtile'
 import { gasesteCategorie } from './categorii'
 
 // Citește hash-ul curent și-l transformă în { categorie, tab }.
@@ -102,13 +104,10 @@ function ConținutCategorie({ categorie, tab }) {
   }
 
   if (categorie === 'echipa') {
-    if (tab === 'echipa') {
-      return <PlaceholderContinut table="ghid_echipa_public" etapa="Etapa 3" />
-    }
     if (tab === 'linkuri') {
-      return <PlaceholderContinut table="ghid_linkuri_utile" etapa="Etapa 3" />
+      return <LinkuriUtile />
     }
-    return <PlaceholderContinut table="departments" etapa="Etapa 4" />
+    return <EchipaLista />
   }
 
   return null

@@ -18,7 +18,6 @@ export const CATEGORII_GHID = [
     label: 'Echipa Madrigal',
     icon: Users,
     tabs: [
-      { key: 'organigrama', label: 'Organigramă' },
       { key: 'echipa', label: 'Echipa' },
       { key: 'linkuri', label: 'Linkuri utile' },
     ],

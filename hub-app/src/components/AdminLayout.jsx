@@ -4,6 +4,8 @@ import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
 import AdminGhidInfoRU from './AdminGhidInfoRU'
+import AdminGhidEchipa from './AdminGhidEchipa'
+import AdminGhidLinkuri from './AdminGhidLinkuri'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
@@ -12,6 +14,8 @@ const SECTIONS = [
   { key: 'acces', label: 'Acces Tool-uri' },
   { key: 'departamente', label: 'Departamente & Funcții' },
   { key: 'ghid-info-ru', label: 'Ghid: Info Resurse Umane' },
+  { key: 'ghid-echipa', label: 'Ghid: Echipa' },
+  { key: 'ghid-linkuri', label: 'Ghid: Linkuri utile' },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
@@ -70,6 +74,8 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}
           {active === 'ghid-info-ru' && <AdminGhidInfoRU />}
+          {active === 'ghid-echipa' && <AdminGhidEchipa />}
+          {active === 'ghid-linkuri' && <AdminGhidLinkuri />}
         </main>
       </div>
 
