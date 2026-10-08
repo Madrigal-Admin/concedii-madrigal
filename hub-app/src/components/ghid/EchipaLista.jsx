@@ -10,11 +10,73 @@ function initiale(nume) {
     .join('')
 }
 
-// Tab-ul "Echipa" — listă simplă, întreținută manual din Admin Hub (nume +
-// rol), NU legată de tabelul angajați. Fără căutare sau filtre — e o
-// listă scurtă de persoane utile, nu un director complet.
+// Transformă lista plată (fiecare rând cu parinte_id) într-un arbore:
+// [{ ...persoana, copii: [...] }]. Rădăcinile sunt persoanele fără
+// superior (sau al căror superior nu mai există în listă).
+function construiesteArbore(persoane) {
+  const dupaId = new Map(persoane.map((p) => [p.id, { ...p, copii: [] }]))
+  const radacini = []
+
+  for (const p of dupaId.values()) {
+    if (p.parinte_id && dupaId.has(p.parinte_id)) {
+      dupaId.get(p.parinte_id).copii.push(p)
+    } else {
+      radacini.push(p)
+    }
+  }
+
+  return radacini
+}
+
+function Cutie({ persoana }) {
+  return (
+    <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2.5 whitespace-nowrap">
+      <span className="w-8 h-8 flex-shrink-0 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-semibold">
+        {initiale(persoana.nume)}
+      </span>
+      <div className="text-left">
+        <p className="text-sm font-medium text-slate-800 leading-tight">{persoana.nume}</p>
+        <p className="text-xs text-slate-500 leading-tight">{persoana.rol}</p>
+      </div>
+    </div>
+  )
+}
+
+// Desktop/tabletă — cutii conectate prin linii (vezi .org-tree în index.css).
+function NodDesktop({ persoana }) {
+  return (
+    <li>
+      <Cutie persoana={persoana} />
+      {persoana.copii.length > 0 && (
+        <ul>
+          {persoana.copii.map((copil) => (
+            <NodDesktop key={copil.id} persoana={copil} />
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+// Mobil — liniile orizontale nu mai încap, deci devine o listă ierarhică
+// simplă, cu indentare pe nivel (cum era cerut în specificație).
+function NodMobil({ persoana, nivel }) {
+  return (
+    <div>
+      <div style={{ paddingLeft: nivel * 20 }} className="py-1.5">
+        <Cutie persoana={persoana} />
+      </div>
+      {persoana.copii.map((copil) => (
+        <NodMobil key={copil.id} persoana={copil} nivel={nivel + 1} />
+      ))}
+    </div>
+  )
+}
+
+// Tab-ul "Echipa" — organigramă simplă, întreținută manual din Admin Hub
+// (nume + rol + superior), NU legată de tabelul angajați.
 export default function EchipaLista() {
-  const [persoane, setPersoane] = useState([])
+  const [arbore, setArbore] = useState([])
   const [loading, setLoading] = useState(true)
   const [eroare, setEroare] = useState('')
 
@@ -29,7 +91,7 @@ export default function EchipaLista() {
         if (error) {
           setEroare(error.message)
         } else {
-          setPersoane(data || [])
+          setArbore(construiesteArbore(data || []))
         }
         setLoading(false)
       })
@@ -40,26 +102,27 @@ export default function EchipaLista() {
 
   if (loading) return <p className="text-sm text-slate-400">Se încarcă...</p>
   if (eroare) return <p className="text-sm text-rose-600">Eroare: {eroare}</p>
-  if (persoane.length === 0) {
-    return <p className="text-sm text-slate-400">Lista se completează în curând.</p>
+  if (arbore.length === 0) {
+    return <p className="text-sm text-slate-400">Organigrama se completează în curând.</p>
   }
 
   return (
-    <ul className="space-y-2">
-      {persoane.map((p) => (
-        <li
-          key={p.id}
-          className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3"
-        >
-          <span className="w-10 h-10 flex-shrink-0 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm font-semibold">
-            {initiale(p.nume)}
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-800 truncate">{p.nume}</p>
-            <p className="text-sm text-slate-500 truncate">{p.rol}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {/* Desktop/tabletă — cutii conectate prin linii */}
+      <div className="hidden sm:block overflow-x-auto">
+        <ul className="org-tree min-w-max mx-auto">
+          {arbore.map((radacina) => (
+            <NodDesktop key={radacina.id} persoana={radacina} />
+          ))}
+        </ul>
+      </div>
+
+      {/* Mobil — listă ierarhică indentată */}
+      <div className="sm:hidden space-y-1">
+        {arbore.map((radacina) => (
+          <NodMobil key={radacina.id} persoana={radacina} nivel={0} />
+        ))}
+      </div>
+    </div>
   )
 }
