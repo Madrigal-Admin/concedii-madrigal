@@ -1,6 +1,8 @@
 import { LogOut } from 'lucide-react'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
+import GhidPanel from './ghid/GhidPanel'
+import GhidRouter from './ghid/GhidRouter'
 
 // Lista de tool-uri, static — adaugi un tool nou aici, când e gata.
 // tool trebuie să corespundă cu valoarea din coloana "tool" din acces_tooluri.
@@ -102,9 +104,13 @@ export default function Dashboard({ angajat, accesTooluri, isHubAdmin, onOpenAdm
             )
           })}
         </div>
+
+        <GhidPanel />
       </main>
 
       <SiteFooter />
+
+      <GhidRouter />
     </div>
   )
 }
