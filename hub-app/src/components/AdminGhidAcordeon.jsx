@@ -30,6 +30,10 @@ export default function AdminGhidAcordeon({ tabel, titluSectiune, descriere }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // RichTextEditor nu e "controlat" (vezi RichTextEditor.jsx) — ca să-l
+  // forțăm să-și reîncarce conținutul la "Renunță" sau la trecerea pe o
+  // altă intrare, îi dăm un `key` care se schimbă de fiecare dată.
+  const [editorKey, setEditorKey] = useState(0)
 
   useEffect(() => {
     loadAll()
@@ -56,6 +60,7 @@ export default function AdminGhidAcordeon({ tabel, titluSectiune, descriere }) {
     })
     setFisierNou(null)
     setError('')
+    setEditorKey((k) => k + 1)
   }
 
   function cancelEdit() {
@@ -63,6 +68,7 @@ export default function AdminGhidAcordeon({ tabel, titluSectiune, descriere }) {
     setForm(EMPTY_FORM)
     setFisierNou(null)
     setError('')
+    setEditorKey((k) => k + 1)
   }
 
   async function handleDelete(item) {
@@ -204,6 +210,7 @@ export default function AdminGhidAcordeon({ tabel, titluSectiune, descriere }) {
         <div>
           <label className="block text-sm text-slate-600 mb-1">Text</label>
           <RichTextEditor
+            key={editorKey}
             value={form.continut_html}
             onChange={(html) => setForm({ ...form, continut_html: html })}
           />

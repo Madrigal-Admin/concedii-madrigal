@@ -146,26 +146,19 @@ body {
   margin: 0.5em 0;
 }
 
-/* Quill randează centrarea/alinierea prin clase pe elemente inline-block
-   (ex: imagini) — le păstrăm compatibile cu stilul de mai sus. */
-.ghid-prose .ql-align-center {
-  text-align: center;
+/* Editorul (Admin Hub) — zona de scris (contentEditable) arată placeholder
+   când e goală, și e vizibil distinctă de restul formularului. */
+.rich-text-editable:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
 }
 
-.ghid-prose .ql-align-right {
-  text-align: right;
-}
-
-.ghid-prose .ql-align-justify {
-  text-align: justify;
-}
-
-/* Editorul (Admin Hub) — înălțime minimă confortabilă pentru scris. */
-.rich-text-editor .ql-container {
-  min-height: 160px;
+.rich-text-editable {
   font-size: 0.875rem;
 }
 
-.rich-text-editor .ql-editor {
-  min-height: 160px;
+.rich-text-editable a {
+  color: #4f46e5;
+  text-decoration: underline;
 }
