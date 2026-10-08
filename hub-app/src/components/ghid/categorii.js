@@ -14,13 +14,11 @@ export const CATEGORII_GHID = [
     icon: BookOpen,
   },
   {
+    // Doar organigrama — tab-ul "Linkuri utile" a fost scos de aici,
+    // conținutul lui s-a mutat în "Informații utile".
     key: 'echipa',
     label: 'Echipa Madrigal',
     icon: Users,
-    tabs: [
-      { key: 'echipa', label: 'Echipa' },
-      { key: 'linkuri', label: 'Linkuri utile' },
-    ],
   },
   {
     key: 'info',
@@ -32,7 +30,7 @@ export const CATEGORII_GHID = [
     // adresa #ghid/documente) ca să nu rupem eventuale legături deja
     // partajate — doar eticheta și conținutul s-au schimbat.
     key: 'documente',
-    label: 'Informații Resurse Umane',
+    label: 'Ghid Resurse Umane',
     icon: ClipboardList,
   },
 ]

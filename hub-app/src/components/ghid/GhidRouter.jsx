@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 import GhidModal from './GhidModal'
 import DespreMadrigal from './DespreMadrigal'
-import InformatiiUtile from './InformatiiUtile'
-import InformatiiResurseUmane from './InformatiiResurseUmane'
+import AcordeonContinut from './AcordeonContinut'
 import EchipaLista from './EchipaLista'
-import LinkuriUtile from './LinkuriUtile'
 import { gasesteCategorie } from './categorii'
 
 // Citește hash-ul curent și-l transformă în { categorie, tab }.
@@ -88,23 +86,20 @@ export default function GhidRouter() {
   )
 }
 
-function ConținutCategorie({ categorie, tab }) {
+function ConținutCategorie({ categorie }) {
   if (categorie === 'despre') {
     return <DespreMadrigal />
   }
 
   if (categorie === 'info') {
-    return <InformatiiUtile />
+    return <AcordeonContinut tabel="ghid_intrebari" />
   }
 
   if (categorie === 'documente') {
-    return <InformatiiResurseUmane />
+    return <AcordeonContinut tabel="ghid_info_resurse_umane" />
   }
 
   if (categorie === 'echipa') {
-    if (tab === 'linkuri') {
-      return <LinkuriUtile />
-    }
     return <EchipaLista />
   }
 

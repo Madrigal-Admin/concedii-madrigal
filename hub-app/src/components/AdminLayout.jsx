@@ -3,11 +3,9 @@ import { LogOut, ArrowLeft } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
-import AdminGhidInfoRU from './AdminGhidInfoRU'
 import AdminGhidEchipa from './AdminGhidEchipa'
-import AdminGhidLinkuri from './AdminGhidLinkuri'
 import AdminGhidDespre from './AdminGhidDespre'
-import AdminGhidInfoUtile from './AdminGhidInfoUtile'
+import AdminGhidAcordeon from './AdminGhidAcordeon'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
@@ -17,9 +15,8 @@ const SECTIONS = [
   { key: 'departamente', label: 'Departamente & Funcții' },
   { key: 'ghid-despre', label: 'Ghid: Despre Madrigal' },
   { key: 'ghid-echipa', label: 'Ghid: Echipa' },
-  { key: 'ghid-linkuri', label: 'Ghid: Linkuri utile' },
   { key: 'ghid-info-utile', label: 'Ghid: Informații utile' },
-  { key: 'ghid-info-ru', label: 'Ghid: Info Resurse Umane' },
+  { key: 'ghid-info-ru', label: 'Ghid: Resurse Umane' },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
@@ -79,9 +76,20 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
           {active === 'departamente' && <AdminDepartamenteFunctii />}
           {active === 'ghid-despre' && <AdminGhidDespre />}
           {active === 'ghid-echipa' && <AdminGhidEchipa />}
-          {active === 'ghid-linkuri' && <AdminGhidLinkuri />}
-          {active === 'ghid-info-utile' && <AdminGhidInfoUtile />}
-          {active === 'ghid-info-ru' && <AdminGhidInfoRU />}
+          {active === 'ghid-info-utile' && (
+            <AdminGhidAcordeon
+              tabel="ghid_intrebari"
+              titluSectiune="Ghidul angajatului — Informații utile"
+              descriere='Intrări grupate pe subiect, cu titlu, text formatat și, opțional, un link SAU un fișier de descărcat (ex: linkuri către grupuri WhatsApp, documente utile).'
+            />
+          )}
+          {active === 'ghid-info-ru' && (
+            <AdminGhidAcordeon
+              tabel="ghid_info_resurse_umane"
+              titluSectiune="Ghidul angajatului — Ghid Resurse Umane"
+              descriere="Aceeași structură ca la Informații utile: subiect, titlu, text formatat și, opțional, un link SAU un fișier de descărcat."
+            />
+          )}
         </main>
       </div>
 

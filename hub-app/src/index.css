@@ -96,3 +96,76 @@ body {
 .org-tree > li::after {
   display: none;
 }
+
+/* =========================================================================
+   Text formatat (RichTextEditor / RichTextContent) — folosit în Despre
+   Madrigal, Informații utile și Ghid Resurse Umane. Stilizare minimă
+   pentru ce poate produce editorul: titluri, bold/italic, culoare,
+   aliniere, liste, linkuri, imagini.
+   ========================================================================= */
+.ghid-prose {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #334155;
+}
+
+.ghid-prose p {
+  margin: 0 0 0.75em 0;
+}
+
+.ghid-prose h1,
+.ghid-prose h2,
+.ghid-prose h3 {
+  font-weight: 600;
+  color: #1e293b;
+  margin: 1em 0 0.5em 0;
+}
+
+.ghid-prose h1 {
+  font-size: 1.25rem;
+}
+
+.ghid-prose h2 {
+  font-size: 1.1rem;
+}
+
+.ghid-prose ul,
+.ghid-prose ol {
+  margin: 0 0 0.75em 0;
+  padding-left: 1.25em;
+}
+
+.ghid-prose a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.ghid-prose img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 0.5em 0;
+}
+
+/* Quill randează centrarea/alinierea prin clase pe elemente inline-block
+   (ex: imagini) — le păstrăm compatibile cu stilul de mai sus. */
+.ghid-prose .ql-align-center {
+  text-align: center;
+}
+
+.ghid-prose .ql-align-right {
+  text-align: right;
+}
+
+.ghid-prose .ql-align-justify {
+  text-align: justify;
+}
+
+/* Editorul (Admin Hub) — înălțime minimă confortabilă pentru scris. */
+.rich-text-editor .ql-container {
+  min-height: 160px;
+  font-size: 0.875rem;
+}
+
+.rich-text-editor .ql-editor {
+  min-height: 160px;
+}
