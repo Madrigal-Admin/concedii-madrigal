@@ -3,7 +3,7 @@ import { LogOut, ArrowLeft } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
-import AdminGhidDocumente from './AdminGhidDocumente'
+import AdminGhidInfoRU from './AdminGhidInfoRU'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
@@ -11,7 +11,7 @@ const SECTIONS = [
   { key: 'angajati', label: 'Angajați' },
   { key: 'acces', label: 'Acces Tool-uri' },
   { key: 'departamente', label: 'Departamente & Funcții' },
-  { key: 'ghid-documente', label: 'Ghid: Documente HR' },
+  { key: 'ghid-info-ru', label: 'Ghid: Info Resurse Umane' },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
@@ -69,7 +69,7 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
           {active === 'angajati' && <AdminAngajati />}
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}
-          {active === 'ghid-documente' && <AdminGhidDocumente />}
+          {active === 'ghid-info-ru' && <AdminGhidInfoRU />}
         </main>
       </div>
 

@@ -1,4 +1,4 @@
-import { BookOpen, Users, HelpCircle, FileText } from 'lucide-react'
+import { BookOpen, Users, HelpCircle, ClipboardList } from 'lucide-react'
 
 // Metadata celor 4 categorii ale Ghidului angajatului — un singur loc de
 // adevăr pentru: cheia din hash (#ghid/<key>), textul din panou, iconița,
@@ -29,9 +29,12 @@ export const CATEGORII_GHID = [
     icon: HelpCircle,
   },
   {
+    // cheia internă rămâne "documente" (nefolosită în interfață, doar în
+    // adresa #ghid/documente) ca să nu rupem eventuale legături deja
+    // partajate — doar eticheta și conținutul s-au schimbat.
     key: 'documente',
-    label: 'Documente Resurse Umane',
-    icon: FileText,
+    label: 'Informații Resurse Umane',
+    icon: ClipboardList,
   },
 ]
 

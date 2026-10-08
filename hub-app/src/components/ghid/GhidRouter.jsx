@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import GhidModal from './GhidModal'
 import PlaceholderContinut from './PlaceholderContinut'
-import DocumenteHR from './DocumenteHR'
+import InformatiiResurseUmane from './InformatiiResurseUmane'
 import { gasesteCategorie } from './categorii'
 
 // Citește hash-ul curent și-l transformă în { categorie, tab }.
@@ -98,7 +98,7 @@ function ConținutCategorie({ categorie, tab }) {
   }
 
   if (categorie === 'documente') {
-    return <DocumenteHR />
+    return <InformatiiResurseUmane />
   }
 
   if (categorie === 'echipa') {
