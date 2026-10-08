@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import GhidModal from './GhidModal'
 import PlaceholderContinut from './PlaceholderContinut'
+import DocumenteHR from './DocumenteHR'
 import { gasesteCategorie } from './categorii'
 
 // Citește hash-ul curent și-l transformă în { categorie, tab }.
@@ -14,13 +15,22 @@ function citesteHash() {
   return { categorie, tab: tab || null }
 }
 
-// Navighează la un pop-up (sau la un tab anume dintr-un pop-up), scriind
-// un hash propriu în adresă — fiecare pop-up are adresa lui, partajabilă,
-// și butonul "Înapoi" al browserului/telefonului îl închide fără să te
-// scoată din Hub.
+// Deschide un pop-up NOU — adaugă o intrare în istoric, ca butonul
+// "Înapoi" să închidă pop-up-ul (nu să te scoată din Hub).
 export function deschideGhid(categorie, tab) {
   const hash = tab ? `#ghid/${categorie}/${tab}` : `#ghid/${categorie}`
   window.history.pushState(null, '', hash)
+  window.dispatchEvent(new Event('ghid-hash-changed'))
+}
+
+// Schimbă tab-ul DIN INTERIORUL unui pop-up deja deschis — înlocuiește
+// intrarea curentă din istoric, nu adaugă una nouă. Dacă am adăuga una
+// nouă la fiecare click pe tab, ai fi nevoit să apeși "Înapoi" (sau X)
+// de mai multe ori ca să închizi pop-up-ul, câte un pas pentru fiecare
+// tab vizitat — exact bug-ul raportat.
+function schimbaTabGhid(categorie, tab) {
+  const hash = tab ? `#ghid/${categorie}/${tab}` : `#ghid/${categorie}`
+  window.history.replaceState(null, '', hash)
   window.dispatchEvent(new Event('ghid-hash-changed'))
 }
 
@@ -58,7 +68,7 @@ export default function GhidRouter() {
   const tabActiv = stare.tab || categorie.tabs?.[0]?.key || null
 
   function handleTabChange(tabKey) {
-    deschideGhid(categorie.key, tabKey)
+    schimbaTabGhid(categorie.key, tabKey)
   }
 
   return (
@@ -88,7 +98,7 @@ function ConținutCategorie({ categorie, tab }) {
   }
 
   if (categorie === 'documente') {
-    return <PlaceholderContinut table="ghid_documente" etapa="Etapa 2" />
+    return <DocumenteHR />
   }
 
   if (categorie === 'echipa') {
