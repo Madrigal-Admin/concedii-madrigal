@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import GhidModal from './GhidModal'
-import PlaceholderContinut from './PlaceholderContinut'
+import DespreMadrigal from './DespreMadrigal'
+import InformatiiUtile from './InformatiiUtile'
 import InformatiiResurseUmane from './InformatiiResurseUmane'
 import EchipaLista from './EchipaLista'
 import LinkuriUtile from './LinkuriUtile'
@@ -87,16 +88,13 @@ export default function GhidRouter() {
   )
 }
 
-// Pentru Etapa 1 arătăm, pentru fiecare categorie (și, la Echipa, pentru
-// fiecare tab), un "placeholder" care confirmă că structura de date e
-// pregătită — conținutul final vine la etapa lui, din ordinea stabilită.
 function ConținutCategorie({ categorie, tab }) {
   if (categorie === 'despre') {
-    return <PlaceholderContinut table="ghid_despre_blocuri" etapa="Etapa 5" />
+    return <DespreMadrigal />
   }
 
   if (categorie === 'info') {
-    return <PlaceholderContinut table="ghid_intrebari" etapa="Etapa 5" />
+    return <InformatiiUtile />
   }
 
   if (categorie === 'documente') {

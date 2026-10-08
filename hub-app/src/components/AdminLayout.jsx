@@ -6,6 +6,8 @@ import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
 import AdminGhidInfoRU from './AdminGhidInfoRU'
 import AdminGhidEchipa from './AdminGhidEchipa'
 import AdminGhidLinkuri from './AdminGhidLinkuri'
+import AdminGhidDespre from './AdminGhidDespre'
+import AdminGhidInfoUtile from './AdminGhidInfoUtile'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
@@ -13,9 +15,11 @@ const SECTIONS = [
   { key: 'angajati', label: 'Angajați' },
   { key: 'acces', label: 'Acces Tool-uri' },
   { key: 'departamente', label: 'Departamente & Funcții' },
-  { key: 'ghid-info-ru', label: 'Ghid: Info Resurse Umane' },
+  { key: 'ghid-despre', label: 'Ghid: Despre Madrigal' },
   { key: 'ghid-echipa', label: 'Ghid: Echipa' },
   { key: 'ghid-linkuri', label: 'Ghid: Linkuri utile' },
+  { key: 'ghid-info-utile', label: 'Ghid: Informații utile' },
+  { key: 'ghid-info-ru', label: 'Ghid: Info Resurse Umane' },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
@@ -73,9 +77,11 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
           {active === 'angajati' && <AdminAngajati />}
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}
-          {active === 'ghid-info-ru' && <AdminGhidInfoRU />}
+          {active === 'ghid-despre' && <AdminGhidDespre />}
           {active === 'ghid-echipa' && <AdminGhidEchipa />}
           {active === 'ghid-linkuri' && <AdminGhidLinkuri />}
+          {active === 'ghid-info-utile' && <AdminGhidInfoUtile />}
+          {active === 'ghid-info-ru' && <AdminGhidInfoRU />}
         </main>
       </div>
 
