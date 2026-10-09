@@ -8,92 +8,79 @@ body {
 }
 
 /* =========================================================================
-   Organigramă (Ghidul angajatului → Echipa Madrigal) — tehnica "pure CSS"
-   de desenat cutii conectate prin linii, cu liste <ul>/<li> imbricate.
-   Scopul listei (ordinea părinte → copii) decide forma arborelui; stilul
-   cutiei (culori, chenar) vine din Tailwind, direct în componentă.
-   Folosit DOAR de EchipaLista.jsx, pe ecrane de la sm în sus — pe mobil,
-   aceeași listă se afișează altfel (indentată), fără liniile astea.
+   Organigramă (Ghidul angajatului → Echipa Madrigal) — orientată de la
+   STÂNGA la DREAPTA: persoana de sus în stânga, subordonații ei stivuiți
+   pe verticală în dreapta, legați prin linii. Lățimea depinde doar de
+   numărul de NIVELURI, nu de câte persoane sunt pe un nivel — deci nu
+   mai apare scroll orizontal. Stilul cutiei vine din Tailwind, în
+   componentă. Folosit DOAR de EchipaLista.jsx, de la sm în sus; pe mobil
+   aceeași listă se afișează ca listă indentată, fără linii.
    ========================================================================= */
-.org-tree,
-.org-tree ul {
-  display: flex;
-  justify-content: center;
-  padding-top: 20px;
-  position: relative;
-}
-
-.org-tree ul {
-  padding-top: 20px;
-}
-
-.org-tree li {
+.org-lr,
+.org-lr ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* fiecare nod: cutia + (în dreapta ei) lista copiilor, centrate vertical */
+.org-lr li {
+  display: flex;
   align-items: center;
-  list-style-type: none;
   position: relative;
-  padding: 20px 10px 0 10px;
+  padding: 6px 0 6px 20px;
 }
 
-.org-tree li::before,
-.org-tree li::after {
+.org-lr > li {
+  padding-left: 0;
+}
+
+/* linia de la cutia-părinte spre bara verticală a copiilor */
+.org-lr li > ul {
+  position: relative;
+  margin-left: 16px;
+}
+
+.org-lr li > ul::before {
   content: '';
   position: absolute;
-  top: 0;
-  right: 50%;
+  left: -16px;
+  top: 50%;
+  width: 16px;
   border-top: 2px solid #cbd5e1;
-  width: 50%;
-  height: 20px;
 }
 
-.org-tree li::after {
-  right: auto;
-  left: 50%;
-  border-left: 2px solid #cbd5e1;
-}
-
-.org-tree li:only-child::after,
-.org-tree li:only-child::before {
-  display: none;
-}
-
-.org-tree li:only-child {
-  padding-top: 0;
-}
-
-.org-tree li:first-child::before,
-.org-tree li:last-child::after {
-  border: 0 none;
-}
-
-.org-tree li:last-child::before {
-  border-right: 2px solid #cbd5e1;
-  border-radius: 0 6px 0 0;
-}
-
-.org-tree li:first-child::after {
-  border-radius: 6px 0 0 0;
-}
-
-/* linia verticală care coboară din cutia-părinte spre rândul de copii —
-   pe orice nivel, nu doar de la al doilea în jos */
-.org-tree li > ul::before {
+/* mica linie orizontală spre fiecare copil */
+.org-lr li li::before {
   content: '';
   position: absolute;
+  left: 0;
+  top: 50%;
+  width: 20px;
+  border-top: 2px solid #cbd5e1;
+}
+
+/* bara verticală care leagă frații între ei */
+.org-lr li li::after {
+  content: '';
+  position: absolute;
+  left: 0;
   top: 0;
-  left: 50%;
+  bottom: 0;
   border-left: 2px solid #cbd5e1;
-  width: 0;
-  height: 20px;
 }
 
-.org-tree > li {
-  padding-top: 0;
+.org-lr li li:first-child::after {
+  top: 50%;
 }
 
-.org-tree > li::before,
-.org-tree > li::after {
+.org-lr li li:last-child::after {
+  bottom: 50%;
+}
+
+.org-lr li li:only-child::after {
   display: none;
 }
 

@@ -13,9 +13,10 @@ import { X, ArrowLeft } from 'lucide-react'
 //   tabs         - opțional: [{ key, label }] — dacă lipsește, nu arată tab-uri
 //   activeTab    - key-ul tab-ului activ
 //   onTabChange  - (key) => void
+//   wide         - opțional: true → pop-up mai lat (ex: organigrama)
 //   onClose      - () => void — apelat la X / săgeată înapoi / Esc / click în afară
 //   children     - conținutul (scrollabil)
-export default function GhidModal({ title, icon: Icon, tabs, activeTab, onTabChange, onClose, children }) {
+export default function GhidModal({ title, icon: Icon, tabs, activeTab, onTabChange, onClose, wide, children }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
   const previouslyFocusedRef = useRef(null)
@@ -87,7 +88,7 @@ export default function GhidModal({ title, icon: Icon, tabs, activeTab, onTabCha
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="bg-white w-full h-full sm:h-[85vh] sm:max-w-3xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden"
+        className={`bg-white w-full h-full sm:h-[85vh] ${wide ? 'sm:max-w-5xl' : 'sm:max-w-3xl'} sm:rounded-2xl shadow-xl flex flex-col overflow-hidden`}
       >
         {/* Header fix — titlu, tab-uri, buton de închidere */}
         <div className="flex-shrink-0 border-b border-slate-200">

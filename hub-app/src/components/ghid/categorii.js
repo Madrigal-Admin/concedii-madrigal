@@ -19,6 +19,7 @@ export const CATEGORII_GHID = [
     key: 'echipa',
     label: 'Echipa Madrigal',
     icon: Users,
+    wide: true, // organigrama are nevoie de mai multă lățime
   },
   {
     key: 'info',

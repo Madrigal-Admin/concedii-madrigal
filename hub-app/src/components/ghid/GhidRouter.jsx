@@ -77,6 +77,7 @@ export default function GhidRouter() {
       title={categorie.label}
       icon={categorie.icon}
       tabs={categorie.tabs}
+      wide={categorie.wide}
       activeTab={tabActiv}
       onTabChange={handleTabChange}
       onClose={inchideGhid}

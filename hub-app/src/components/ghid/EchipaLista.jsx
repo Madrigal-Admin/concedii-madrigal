@@ -30,7 +30,7 @@ function construiesteArbore(persoane) {
 
 function Cutie({ persoana }) {
   return (
-    <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2.5 whitespace-nowrap">
+    <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2.5 max-w-[240px]">
       <span className="w-8 h-8 flex-shrink-0 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-semibold">
         {initiale(persoana.nume)}
       </span>
@@ -42,7 +42,7 @@ function Cutie({ persoana }) {
   )
 }
 
-// Desktop/tabletă — cutii conectate prin linii (vezi .org-tree în index.css).
+// Desktop/tabletă — cutii conectate prin linii, de la stânga la dreapta (vezi .org-lr în index.css).
 function NodDesktop({ persoana }) {
   return (
     <li>
@@ -108,9 +108,9 @@ export default function EchipaLista() {
 
   return (
     <div>
-      {/* Desktop/tabletă — cutii conectate prin linii */}
+      {/* Desktop/tabletă — organigramă stânga → dreapta */}
       <div className="hidden sm:block overflow-x-auto">
-        <ul className="org-tree min-w-max mx-auto">
+        <ul className="org-lr">
           {arbore.map((radacina) => (
             <NodDesktop key={radacina.id} persoana={radacina} />
           ))}
