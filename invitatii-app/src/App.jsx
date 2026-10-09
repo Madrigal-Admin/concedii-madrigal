@@ -37,16 +37,23 @@ function AdminApp() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  useEffect(() => {
-    if (session === undefined) return
+  // Rolul se (re)calculează DOAR când se schimbă utilizatorul, nu la
+  // fiecare reînnoire de token: Supabase emite un obiect `session` nou la
+  // revenirea pe tab / după inactivitate, iar dacă depindeam de el,
+  // aplicația reafișa ecranul de încărcare și pierdea datele nesalvate.
+  const userId = session === undefined ? undefined : session?.user?.id ?? null
 
-    if (!session) {
+  useEffect(() => {
+    if (userId === undefined) return
+
+    if (!userId) {
       window.location.href = '/'
       return
     }
 
     resolveRole(session)
-  }, [session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   async function resolveRole(session) {
     setCheckingRole(true)

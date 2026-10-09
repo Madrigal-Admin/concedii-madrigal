@@ -21,10 +21,16 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  useEffect(() => {
-    if (session === undefined) return // sesiunea încă nu s-a determinat
+  // Rolul se (re)calculează DOAR când se schimbă utilizatorul, nu la
+  // fiecare reînnoire de token: Supabase emite un obiect `session` nou la
+  // revenirea pe tab / după inactivitate, iar dacă depindeam de el,
+  // aplicația reafișa ecranul de încărcare și pierdea datele nesalvate.
+  const userId = session === undefined ? undefined : session?.user?.id ?? null
 
-    if (!session) {
+  useEffect(() => {
+    if (userId === undefined) return // sesiunea încă nu s-a determinat
+
+    if (!userId) {
       // Fără sesiune activă → HR-ul nu are ecran de login propriu, se
       // bazează exclusiv pe sesiunea partajată cu Hub-ul.
       window.location.href = '/'
@@ -32,7 +38,8 @@ export default function App() {
     }
 
     resolveRole(session)
-  }, [session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   async function resolveRole(session) {
     setCheckingRole(true)

@@ -44,8 +44,16 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Reîncărcăm profilul DOAR când se schimbă utilizatorul, nu la fiecare
+  // reînnoire de token. Supabase emite evenimente de auth (SIGNED_IN /
+  // TOKEN_REFRESHED) cu un obiect `session` nou de fiecare dată când
+  // revii pe tab sau după câteva minute de inactivitate — dacă depindeam
+  // de obiectul `session`, aplicația afișa ecranul "Se încarcă..." și
+  // șterge tot ce era completat în formularele din Admin.
+  const userId = session?.user?.id ?? null
+
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       setAngajat(null)
       setAccesTooluri([])
       setLoadingProfil(false)
@@ -57,7 +65,7 @@ export default function App() {
       const { data: angajatData } = await supabase
         .from('angajati')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .maybeSingle()
 
       setAngajat(angajatData)
@@ -74,7 +82,7 @@ export default function App() {
     }
 
     loadProfil()
-  }, [session])
+  }, [userId])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
