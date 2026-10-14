@@ -209,18 +209,22 @@ export default function PostevForm({ eveniment, raport, cfg, angajatCurent, onSa
           <div className="space-y-2">
             {f.localitati.map((l, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input
-                  list="localitati-sugestii"
-                  placeholder="Localitate"
-                  className={`${inputCls} flex-1`}
-                  value={l.localitate}
-                  onChange={(e) => set('localitati', f.localitati.map((x, j) => (j === i ? { ...x, localitate: e.target.value } : x)))}
-                />
-                <input
-                  type="number" min="1" step="1" className={`${inputCls} w-24`}
-                  value={l.nr}
-                  onChange={(e) => set('localitati', f.localitati.map((x, j) => (j === i ? { ...x, nr: e.target.value } : x)))}
-                />
+                <div className="min-w-0 flex-1">
+                  <input
+                    list="localitati-sugestii"
+                    placeholder="Localitate"
+                    className={inputCls}
+                    value={l.localitate}
+                    onChange={(e) => set('localitati', f.localitati.map((x, j) => (j === i ? { ...x, localitate: e.target.value } : x)))}
+                  />
+                </div>
+                <div className="w-24 shrink-0">
+                  <input
+                    type="number" min="1" step="1" className={inputCls}
+                    value={l.nr}
+                    onChange={(e) => set('localitati', f.localitati.map((x, j) => (j === i ? { ...x, nr: e.target.value } : x)))}
+                  />
+                </div>
                 {f.localitati.length > 1 && (
                   <button type="button" onClick={() => set('localitati', f.localitati.filter((_, j) => j !== i))}
                     className="rounded-full p-1.5 text-rose-500 hover:bg-rose-50" title="Șterge linia">
