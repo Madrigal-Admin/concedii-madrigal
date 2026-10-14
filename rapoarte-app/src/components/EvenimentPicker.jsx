@@ -35,7 +35,10 @@ export default function EvenimentPicker({ onAlege, onManual, onCancel }) {
       <p className="text-sm text-slate-500">
         Apar evenimentele din calendar care s-au încheiat și nu au încă raport.
       </p>
-      <input className={`${inputCls} max-w-sm`} placeholder="Caută după nume…" value={cauta} onChange={(e) => setCauta(e.target.value)} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <input className={`${inputCls} max-w-sm`} placeholder="Caută după nume…" value={cauta} onChange={(e) => setCauta(e.target.value)} />
+        <button onClick={onManual} className={btnGhost}>Evenimentul nu e în calendar</button>
+      </div>
 
       {loading && <p className="text-sm text-slate-500">Se încarcă…</p>}
       {!loading && vizibile.length === 0 && <p className="text-sm text-slate-500">Niciun eveniment disponibil.</p>}
@@ -52,10 +55,6 @@ export default function EvenimentPicker({ onAlege, onManual, onCancel }) {
             </p>
           </button>
         ))}
-      </div>
-
-      <div className="border-t border-slate-200 pt-3">
-        <button onClick={onManual} className={btnGhost}>Evenimentul nu e în calendar</button>
       </div>
     </div>
   )

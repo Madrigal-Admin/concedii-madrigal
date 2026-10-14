@@ -22,8 +22,28 @@ function formatData(dataStr) {
   return new Date(dataStr).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// Data locală (nu UTC) — altfel, în România, ziua apărea mutată cu o zi.
 function ymd(date) {
-  return date.toISOString().slice(0, 10)
+  const a = date.getFullYear()
+  const l = String(date.getMonth() + 1).padStart(2, '0')
+  const z = String(date.getDate()).padStart(2, '0')
+  return `${a}-${l}-${z}`
+}
+
+// Toate zilele unui eveniment, de la început la sfârșit (max 60 de zile).
+function zileEveniment(e) {
+  if (!e.data) return []
+  const start = e.data
+  let end = e.data_sfarsit && e.data_sfarsit >= e.data ? e.data_sfarsit : e.data
+  const zile = []
+  const cursor = new Date(Date.UTC(+start.slice(0, 4), +start.slice(5, 7) - 1, +start.slice(8, 10)))
+  for (let i = 0; i < 60; i++) {
+    const d = cursor.toISOString().slice(0, 10)
+    if (d > end) break
+    zile.push(d)
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+  return zile
 }
 
 function initialeTag(tag) {
@@ -117,9 +137,10 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
   const evenimenteByDate = useMemo(() => {
     const map = {}
     for (const e of evenimenteVizibile) {
-      if (!e.data) continue
-      if (!map[e.data]) map[e.data] = []
-      map[e.data].push(e)
+      for (const z of zileEveniment(e)) {
+        if (!map[z]) map[z] = []
+        map[z].push(e)
+      }
     }
     return map
   }, [evenimenteVizibile])
@@ -150,7 +171,7 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
   const evenimenteAfisate = useMemo(() => {
     if (ziuaSelectata) return evenimenteByDate[ziuaSelectata] || []
     const prefix = `${lunaCurenta.getFullYear()}-${String(lunaCurenta.getMonth() + 1).padStart(2, '0')}`
-    return evenimenteVizibile.filter((e) => e.data?.startsWith(prefix))
+    return evenimenteVizibile.filter((e) => zileEveniment(e).some((z) => z.startsWith(prefix)))
   }, [ziuaSelectata, evenimenteByDate, evenimenteVizibile, lunaCurenta])
 
   function schimbaLuna(delta) {
@@ -270,12 +291,18 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
                   const esteAzi = dataStr === azi
                   const esteSelectata = dataStr === ziuaSelectata
 
+                  const multiZi = evZi.some((e) => e.data_sfarsit && e.data_sfarsit > e.data)
+                  const culoareInterval = multiZi
+                    ? tagCulori[evZi.find((e) => e.data_sfarsit && e.data_sfarsit > e.data)?.tags?.[0]] || '#94a3b8'
+                    : null
+
                   const tagurileZilei = [...new Set(evZi.flatMap((e) => (e.tags?.length ? e.tags : ['__fără_tag__'])))]
 
                   return (
                     <button
                       key={dataStr}
                       onClick={() => setZiuaSelectata(esteSelectata ? null : dataStr)}
+                      style={multiZi && !esteSelectata ? { backgroundColor: `${culoareInterval}1f` } : undefined}
                       className={`aspect-square rounded-lg flex flex-col items-center justify-start pt-1.5 text-sm transition ${
                         !inLuna ? 'text-slate-300' : 'text-slate-700'
                       } ${esteSelectata ? 'bg-accent text-white' : esteAzi ? 'bg-accent/10 text-accent font-semibold' : 'hover:bg-slate-50'}`}

@@ -53,7 +53,7 @@ export default function RsvpPage({ token }) {
 
         <p className="mt-4 text-sm text-slate-600">
           Bună, <strong>{info.nume_invitat}</strong>!
-          {info.mesaj_intro ? ` ${info.mesaj_intro.replace('{{nume}}', info.nume_invitat)}` : ''}
+          {info.mesaj_intro ? ` ${info.mesaj_intro.replace(/\{\{\s*nume\s*\}\}/g, info.nume_invitat).replace(/\{\{\s*\w+\s*\}\}/g, '')}` : ''}
         </p>
 
         <div className="mt-6 flex justify-center gap-3">

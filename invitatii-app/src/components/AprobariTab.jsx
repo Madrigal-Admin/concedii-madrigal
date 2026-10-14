@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ExternalLink } from 'lucide-react'
+import { Check, ExternalLink, Link as LinkIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 
 function formatDataOra(dataStr) {
@@ -17,6 +17,8 @@ export default function AprobariTab() {
   const [cereri, setCereri] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [invitatiiCerere, setInvitatiiCerere] = useState({}) // cerere_id -> [{nume, token}]
+  const [copiat, setCopiat] = useState(null)
 
   useEffect(() => {
     load()
@@ -29,7 +31,25 @@ export default function AprobariTab() {
       .select('*, evenimente(nume)')
       .order('data_cerere', { ascending: false })
     setCereri(data || [])
+    const { data: inv } = await supabase
+      .from('invitatii')
+      .select('cerere_id, nume_complet_invitat, token')
+      .not('cerere_id', 'is', null)
+    const map = {}
+    for (const i of inv || []) (map[i.cerere_id] ||= []).push({ nume: i.nume_complet_invitat, token: i.token })
+    setInvitatiiCerere(map)
     setLoading(false)
+  }
+
+  async function copiaza(token) {
+    const link = `${window.location.origin}/invitatii/?rsvp=${token}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiat(token)
+      setTimeout(() => setCopiat(null), 1800)
+    } catch {
+      window.prompt('Copiază linkul RSVP:', link)
+    }
   }
 
   async function aproba(cerere) {
@@ -119,6 +139,23 @@ export default function AprobariTab() {
                     </span>
                   ))}
                 </div>
+
+                {aprobata && (invitatiiCerere[c.id] || []).length > 0 && (
+                  <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
+                    <p className="text-xs font-medium text-slate-500">Linkuri RSVP (se văd și în Check-in):</p>
+                    {invitatiiCerere[c.id].map((i) => (
+                      <div key={i.token} className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                        <span>{i.nume}</span>
+                        <button
+                          onClick={() => copiaza(i.token)}
+                          className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-medium hover:bg-slate-200"
+                        >
+                          <LinkIcon size={12} /> {copiat === i.token ? 'Copiat!' : 'Copiază link'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

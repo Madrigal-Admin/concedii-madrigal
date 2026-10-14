@@ -18,12 +18,12 @@ const TIPURI = [
 const MAX_MB = 5
 
 export default function Structura() {
-  const [tab, setTab] = useState('sablon')
+  const [tab, setTab] = useState('activitate')
   return (
     <div className="space-y-4">
       <h2 className="font-display text-lg font-semibold text-slate-800">Structura rapoartelor</h2>
       <div className="flex gap-1 border-b border-slate-200">
-        {[['sablon', 'Șablon Word'], ['campuri', 'Câmpuri suplimentare'], ['postev', 'Post-eveniment: tipuri și câmpuri']].map(([k, l]) => (
+        {[['activitate', 'Editare șablon Raport de activitate'], ['postev', 'Editare șablon Raport post-eveniment']].map(([k, l]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -35,8 +35,18 @@ export default function Structura() {
           </button>
         ))}
       </div>
-      {tab === 'sablon' && <Sablon />}
-      {tab === 'campuri' && <Campuri />}
+      {tab === 'activitate' && (
+        <div className="space-y-8">
+          <section className="space-y-3">
+            <h3 className="font-display text-base font-semibold text-slate-800">1. Șablon Word</h3>
+            <Sablon />
+          </section>
+          <section className="space-y-3 border-t border-slate-200 pt-6">
+            <h3 className="font-display text-base font-semibold text-slate-800">2. Câmpuri suplimentare</h3>
+            <Campuri />
+          </section>
+        </div>
+      )}
       {tab === 'postev' && <StructuraPostev />}
     </div>
   )

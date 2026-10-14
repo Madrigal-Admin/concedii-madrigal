@@ -13,7 +13,7 @@ export default function Verificare() {
   const [loading, setLoading] = useState(true)
   const [rapoarte, setRapoarte] = useState([])
   const [campuri, setCampuri] = useState([])
-  const [filtruStare, setFiltruStare] = useState('trimis')
+  const [filtruStare, setFiltruStare] = useState('')
   const [filtruAn, setFiltruAn] = useState('')
   const [filtruLuna, setFiltruLuna] = useState('')
   const [cauta, setCauta] = useState('')

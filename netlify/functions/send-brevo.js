@@ -20,6 +20,15 @@ function formatData(dataStr) {
   return new Date(dataStr).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function esc(t) {
+  return String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Înlocuiește {{nume}}, {{prenume}}, {{nume_familie}}, {{institutie}}, {{functie}}
+function inlocuieste(text, valori) {
+  return (text || '').replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => (k in valori ? valori[k] : m))
+}
+
 export async function handler(event) {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' })
 
@@ -80,7 +89,7 @@ export async function handler(event) {
 
   // 3. Invitațiile "în așteptare", netrimise încă, cu email valid
   const invRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/invitatii?eveniment_id=eq.${evenimentId}&status_rsvp=eq.in_asteptare&trimis_la=is.null&select=id,token,nume_complet_invitat,persoane(nume,prenume,email)`,
+    `${SUPABASE_URL}/rest/v1/invitatii?eveniment_id=eq.${evenimentId}&status_rsvp=eq.in_asteptare&trimis_la=is.null&select=id,token,nume_complet_invitat,persoane(nume,prenume,email,institutie,functie)`,
     { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
   )
   const invitatii = await invRes.json()
@@ -94,7 +103,15 @@ export async function handler(event) {
   for (const inv of cuEmail) {
     const nume = `${inv.persoane.prenume} ${inv.persoane.nume}`
     const rsvpLink = `${SITE_URL}/invitatii/?rsvp=${inv.token}`
-    const mesaj = (profil.mesaj_intro || '').replace(/\{\{nume\}\}/g, nume)
+    const valori = {
+      nume,
+      prenume: inv.persoane.prenume || '',
+      nume_familie: inv.persoane.nume || '',
+      institutie: inv.persoane.institutie || '',
+      functie: inv.persoane.functie || '',
+    }
+    const mesaj = esc(inlocuieste(profil.mesaj_intro, valori))
+    const subiect = inlocuieste(profil.subiect_email, valori)
 
     const htmlContent = `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -120,7 +137,7 @@ export async function handler(event) {
       body: JSON.stringify({
         sender: { name: BREVO_SENDER_NAME || 'Corul Madrigal', email: BREVO_SENDER_EMAIL },
         to: [{ email: inv.persoane.email, name: nume }],
-        subject: profil.subiect_email,
+        subject: subiect,
         htmlContent,
       }),
     })

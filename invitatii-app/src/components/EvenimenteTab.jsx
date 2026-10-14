@@ -535,7 +535,9 @@ function TabContinut({ eveniment, session, onChanged }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Subiect email</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">
+          Subiect email <span className="text-slate-400">(poți folosi câmpurile de mai jos)</span>
+        </label>
         <input
           value={subiect}
           onChange={(e) => setSubiect(e.target.value)}
@@ -546,8 +548,13 @@ function TabContinut({ eveniment, session, onChanged }) {
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">
-          Mesaj <span className="text-slate-400">(poți folosi {'{{nume}}'})</span>
+          Mesaj
         </label>
+        <p className="mb-1.5 text-[11px] leading-relaxed text-slate-400">
+          Câmpuri înlocuite automat pentru fiecare persoană, în subiect și în mesaj:{' '}
+          <code>{'{{nume}}'}</code> (nume complet), <code>{'{{prenume}}'}</code>, <code>{'{{nume_familie}}'}</code>,{' '}
+          <code>{'{{institutie}}'}</code>, <code>{'{{functie}}'}</code>. Ex: „Stimate {'{{nume}}'}, de la {'{{institutie}}'}...”
+        </p>
         <textarea
           value={mesaj}
           onChange={(e) => setMesaj(e.target.value)}

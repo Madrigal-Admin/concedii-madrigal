@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { PublicLayout } from './PublicLayout'
 
+const MAX_INVITATI = 2
 const FUNCTII = ['Corist', 'Organizare', 'Management']
 
 export default function NominalizarePage() {
@@ -27,7 +28,7 @@ export default function NominalizarePage() {
   }
 
   function addInvitat() {
-    setInvitati((prev) => [...prev, ''])
+    setInvitati((prev) => (prev.length >= MAX_INVITATI ? prev : [...prev, '']))
   }
 
   function removeInvitat(i) {
@@ -54,7 +55,11 @@ export default function NominalizarePage() {
     setSaving(false)
 
     if (error) {
-      setError('Nu am putut trimite cererea. Încearcă din nou.')
+      setError(
+        (error.message || '').includes('limita_2_invitati')
+          ? `Poți nominaliza cel mult ${MAX_INVITATI} invitați pentru un eveniment (limita include cererile trimise anterior cu același nume).`
+          : 'Nu am putut trimite cererea. Încearcă din nou.'
+      )
       return
     }
     setDone(true)
@@ -139,13 +144,17 @@ export default function NominalizarePage() {
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={addInvitat}
-            className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-          >
-            <Plus size={13} /> Adaugă alt invitat
-          </button>
+          {invitati.length < MAX_INVITATI ? (
+            <button
+              type="button"
+              onClick={addInvitat}
+              className="mt-2 flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+            >
+              <Plus size={13} /> Adaugă alt invitat
+            </button>
+          ) : (
+            <p className="mt-2 text-xs text-slate-400">Maxim {MAX_INVITATI} invitați per persoană.</p>
+          )}
         </div>
 
         {error && <p className="text-xs text-rose-600">{error}</p>}

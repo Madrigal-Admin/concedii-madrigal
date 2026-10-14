@@ -14,7 +14,7 @@ export default function PostevAdmin({ angajat }) {
   const cfg = usePostevConfig()
   const [rapoarte, setRapoarte] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtruStare, setFiltruStare] = useState('trimis')
+  const [filtruStare, setFiltruStare] = useState('')
   const [filtruAn, setFiltruAn] = useState('')
   const [filtruLuna, setFiltruLuna] = useState('')
   const [filtruTip, setFiltruTip] = useState('')

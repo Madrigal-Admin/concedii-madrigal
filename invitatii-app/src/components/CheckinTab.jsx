@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Link as LinkIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 
 const RSVP_BADGE = {
@@ -21,6 +21,7 @@ export default function CheckinTab() {
   const [sortare, setSortare] = useState('nume')
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [copiat, setCopiat] = useState(null)
 
   useEffect(() => {
     loadEvenimente()
@@ -54,6 +55,17 @@ export default function CheckinTab() {
       .eq('eveniment_id', id)
     setInvitatii(data || [])
     setLoading(false)
+  }
+
+  async function copiazaLink(inv) {
+    const link = `${window.location.origin}/invitatii/?rsvp=${inv.token}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiat(inv.id)
+      setTimeout(() => setCopiat(null), 1800)
+    } catch {
+      window.prompt('Copiază linkul RSVP:', link)
+    }
   }
 
   async function toggleCheckin(inv) {
@@ -175,6 +187,13 @@ export default function CheckinTab() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => copiazaLink(inv)}
+                    title="Copiază linkul RSVP al acestui invitat"
+                    className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-200"
+                  >
+                    <LinkIcon size={12} /> {copiat === inv.id ? 'Copiat!' : 'Link RSVP'}
+                  </button>
                   <span className="text-xs text-slate-400">{inv.prezent ? 'Prezent' : 'Neprezentat'}</span>
                   <button
                     onClick={() => toggleCheckin(inv)}
