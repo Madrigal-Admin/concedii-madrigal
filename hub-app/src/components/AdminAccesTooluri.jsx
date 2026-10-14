@@ -8,6 +8,11 @@ const TOOLS = [
   { key: 'invitatii', label: 'Invitații', roles: ['full', 'checkin'] },
   { key: 'administrativ', label: 'Administrativ', roles: ['full', 'angajat'] },
   { key: 'calendar', label: 'Calendar', roles: ['admin'] },
+  {
+    key: 'rapoarte',
+    label: 'Rapoarte',
+    roles: ['angajat', 'admin_activitate', 'admin_postev', 'vizualizare', 'admin_general'],
+  },
 ]
 
 const ROLE_LABELS = {
@@ -16,6 +21,10 @@ const ROLE_LABELS = {
   operational: 'Operațional',
   full: 'Admin complet',
   checkin: 'Verificare la intrare',
+  admin_activitate: 'Admin Rapoarte de activitate',
+  admin_postev: 'Admin Rapoarte post-eveniment',
+  vizualizare: 'Vizualizare dashboard',
+  admin_general: 'Admin general Rapoarte',
 }
 
 export default function AdminAccesTooluri() {

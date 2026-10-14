@@ -25,6 +25,12 @@ const TOOLS = [
     description: 'Cereri de eliberare din magazie.',
     href: '/administrativ/',
   },
+  {
+    tool: 'rapoarte',
+    name: 'Rapoarte',
+    description: 'Rapoarte de activitate lunare și rapoarte post-eveniment.',
+    href: '/rapoarte/',
+  },
 ]
 
 export default function Dashboard({ angajat, accesTooluri, isHubAdmin, onOpenAdmin, onOpenCalendar, onSignOut }) {
