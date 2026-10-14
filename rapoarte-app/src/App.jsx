@@ -3,7 +3,6 @@ import { ArrowLeft } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import Sidebar, { sectiuniPermise } from './components/Sidebar'
-import ComingSoon from './components/ComingSoon'
 import RapoarteleMele from './components/RapoarteleMele'
 import Verificare from './components/Verificare'
 import Nedepuse from './components/Nedepuse'
@@ -11,6 +10,7 @@ import PersoaneContracte from './components/PersoaneContracte'
 import Structura from './components/Structura'
 import PostevMele from './components/PostevMele'
 import PostevAdmin from './components/PostevAdmin'
+import Dashboard from './components/Dashboard'
 import { ROLE_LABELS } from './lib/roluri'
 
 export default function App() {
@@ -105,9 +105,7 @@ export default function App() {
             {view === 'structura' && <Structura />}
             {view === 'postev' && <PostevMele angajat={angajat} role={role} />}
             {view === 'postev-admin' && <PostevAdmin angajat={angajat} />}
-            {view === 'dashboard' && (
-              <ComingSoon titlu="Dashboard" text="Dashboardul rapoartelor post-eveniment urmează după formular." />
-            )}
+            {view === 'dashboard' && <Dashboard />}
           </div>
         </main>
       </div>
