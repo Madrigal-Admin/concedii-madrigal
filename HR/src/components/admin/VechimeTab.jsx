@@ -18,7 +18,7 @@ export default function VechimeTab() {
     const [{ data: angajati }, { data: suspendari }] = await Promise.all([
       supabase
         .from('angajati')
-        .select('*, hr_profil_angajat(*), hr_vechime_anterioara(*)')
+        .select('*, hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name)), hr_vechime_anterioara(*)')
         .eq('activ', true)
         .order('nume_complet'),
       supabase

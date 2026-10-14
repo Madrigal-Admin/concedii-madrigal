@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, Cake, TrendingUp, IdCard, FileWarning, Columns3, Printer, Download, Save, X as XIcon } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
-import { calculateBalance } from '../../lib/leaveCalculations'
+import { calculateBalance, getHrProfil, getContracte } from '../../lib/leaveCalculations'
 import { calculateVechime, parseCnpBirthDate, dataUrmatoareiGradatii } from '../../lib/vechimeCalculations'
 
+// Datele personale + câmpurile contractului PRINCIPAL (vezi getHrProfil).
 function profilOf(emp) {
-  return Array.isArray(emp.hr_profil_angajat) ? emp.hr_profil_angajat[0] : emp.hr_profil_angajat
+  return getHrProfil(emp)
 }
 const DA_NU = (v) => (v === true ? 'Da' : v === false ? 'Nu' : '—')
 const AZI = new Date().toISOString().slice(0, 10)
@@ -22,6 +23,7 @@ const COLOANE = [
   { key: 'numar_contract', grup: 'Contract & Program', label: 'Număr contract', get: ({ emp }) => profilOf(emp)?.numar_contract || '—', sort: ({ emp }) => profilOf(emp)?.numar_contract || '' },
   { key: 'data_inceput_contract', grup: 'Contract & Program', label: 'Data început contract', get: ({ emp }) => profilOf(emp)?.data_inceput_contract || '—', sort: ({ emp }) => profilOf(emp)?.data_inceput_contract || '' },
   { key: 'data_final_contract', grup: 'Contract & Program', label: 'Data final contract', get: ({ emp }) => profilOf(emp)?.data_final_contract || '—', sort: ({ emp }) => profilOf(emp)?.data_final_contract || '' },
+  { key: 'nr_contracte', grup: 'Contract & Program', label: 'Nr. contracte', get: ({ emp }) => getContracte(emp).length || '—', sort: ({ emp }) => getContracte(emp).length },
   { key: 'norma_ore', grup: 'Contract & Program', label: 'Normă (ore)', get: ({ emp }) => (profilOf(emp)?.norma_ore ? `${profilOf(emp).norma_ore}h` : '—'), sort: ({ emp }) => profilOf(emp)?.norma_ore || 0 },
   { key: 'interval_orar', grup: 'Contract & Program', label: 'Interval orar', get: ({ emp }) => { const p = profilOf(emp); return p?.interval_ora_inceput && p?.interval_ora_sfarsit ? `${p.interval_ora_inceput}–${p.interval_ora_sfarsit}` : '—' }, sort: ({ emp }) => profilOf(emp)?.interval_ora_inceput || '' },
   { key: 'fisa_postului', grup: 'Contract & Program', label: 'Fișa postului', get: ({ emp }) => DA_NU(profilOf(emp)?.are_fisa_postului), sort: ({ emp }) => (profilOf(emp)?.are_fisa_postului ? 1 : 0) },
@@ -81,10 +83,13 @@ function calculeazaRemindere(rows) {
   for (const { emp, vechime, faraPlata } of rows) {
     const profil = profilOf(emp)
 
-    if (profil?.data_inceput_contract) {
-      const data = urmatoareaAniversare(profil.data_inceput_contract)
+    // Aniversarea la Madrigal = de la cel mai vechi contract.
+    const inceputuri = getContracte(emp).map((c) => c.data_inceput_contract).filter(Boolean).sort()
+    const inceputMadrigal = inceputuri[0] || profil?.data_inceput_contract
+    if (inceputMadrigal) {
+      const data = urmatoareaAniversare(inceputMadrigal)
       if (inFereastra(data)) {
-        const ani = new Date(data).getFullYear() - new Date(profil.data_inceput_contract).getFullYear()
+        const ani = new Date(data).getFullYear() - new Date(inceputMadrigal).getFullYear()
         remindere.push({ tip: 'aniversare', angajat: emp.nume_complet, data, detaliu: `${ani} ani la Madrigal` })
       }
     }
@@ -111,8 +116,16 @@ function calculeazaRemindere(rows) {
       remindere.push({ tip: 'buletin', angajat: emp.nume_complet, data: profil.act_data_expirare, detaliu: 'Actul de identitate expiră' })
     }
 
-    if (profil?.tip_contract === 'determinat' && inFereastra(profil?.data_final_contract)) {
-      remindere.push({ tip: 'contract', angajat: emp.nume_complet, data: profil.data_final_contract, detaliu: 'Contractul expiră' })
+    // Alertă de expirare pentru FIECARE contract determinat.
+    for (const c of getContracte(emp)) {
+      if (c.tip_contract === 'determinat' && inFereastra(c.data_final_contract)) {
+        remindere.push({
+          tip: 'contract',
+          angajat: emp.nume_complet,
+          data: c.data_final_contract,
+          detaliu: c.numar_contract ? `Contractul nr. ${c.numar_contract} expiră` : 'Contractul expiră',
+        })
+      }
     }
   }
 
@@ -137,7 +150,7 @@ export default function OverviewTab() {
     const [{ data: employees }, { data: requests }, { data: recoveries }, { data: vederiSalvate }] = await Promise.all([
       supabase
         .from('angajati')
-        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*, attribution:attributions(name)), hr_vechime_anterioara(*)')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name)), hr_vechime_anterioara(*)')
         .eq('activ', true)
         .order('nume_complet'),
       supabase.from('leave_requests').select('*').eq('status', 'approved'),

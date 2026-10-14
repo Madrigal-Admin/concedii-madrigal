@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Save, X as XIcon, Plus, Trash2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
-import { getHrProfil } from '../../lib/leaveCalculations'
+import { getHrProfil, getContracte, getContractPrincipal, etichetaContract } from '../../lib/leaveCalculations'
 import { calculateVechime } from '../../lib/vechimeCalculations'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -37,6 +37,22 @@ const CAMPURI_MODIFICABILE = [
   { key: 'observatii', label: 'Observații', type: 'text' },
 ]
 
+// Câmpurile unui act adițional care țin de CONTRACT (se aplică pe contractul
+// ales). Restul (CNP, IBAN, adresă etc.) țin de PERSOANĂ și se aplică fără
+// alegerea unui contract.
+const CHEI_CONTRACT = [
+  'tip_contract',
+  'data_final_contract',
+  'grad',
+  'atributie_id',
+  'norma_ore',
+  'interval_ora_inceput',
+  'interval_ora_sfarsit',
+  'are_fisa_postului',
+  'functie_de_baza',
+]
+const esteCampContract = (key) => CHEI_CONTRACT.includes(key)
+
 function labelPentruCamp(key) {
   return CAMPURI_MODIFICABILE.find((c) => c.key === key)?.label || key
 }
@@ -53,6 +69,8 @@ function formatValoare(key, value, attributions) {
 export default function EmployeesTab() {
   const [angajati, setAngajati] = useState([])
   const [attributions, setAttributions] = useState([])
+  const [departments, setDepartments] = useState([])
+  const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [rollingOver, setRollingOver] = useState(false)
@@ -64,31 +82,35 @@ export default function EmployeesTab() {
 
   async function load() {
     setLoading(true)
-    const [{ data }, { data: attrData }] = await Promise.all([
+    const [{ data }, { data: attrData }, { data: depData }, { data: posData }] = await Promise.all([
       supabase
         .from('angajati')
         .select(
-          '*, department:departments(name), position:positions(name), hr_profil_angajat(*, attribution:attributions(name)), hr_vechime_anterioara(*)'
+          '*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name)), hr_vechime_anterioara(*)'
         )
         .eq('activ', true)
         .order('nume_complet'),
       supabase.from('attributions').select('*').order('name'),
+      supabase.from('departments').select('id, name').order('name'),
+      supabase.from('positions').select('id, name').order('name'),
     ])
     setAngajati(data || [])
     setAttributions(attrData || [])
+    setDepartments(depData || [])
+    setPositions(posData || [])
     setLoading(false)
   }
 
   async function handleRollover() {
     if (
       !confirm(
-        `Avansezi soldurile TUTUROR angajaților la anul ${CURRENT_YEAR}? Recuperările nu sunt afectate — doar cele 3 categorii de solduri pe ani.`
+        `Avansezi soldurile TUTUROR contractelor la anul ${CURRENT_YEAR}? Recuperările nu sunt afectate — doar cele 3 categorii de solduri pe ani.`
       )
     )
       return
     setRollingOver(true)
     setRolloverError('')
-    const { error } = await supabase.rpc('rollover_hr_profil_angajat')
+    const { error } = await supabase.rpc('rollover_hr_contracte')
     setRollingOver(false)
     if (error) {
       setRolloverError('Nu am putut avansa anul. Încearcă din nou.')
@@ -97,10 +119,9 @@ export default function EmployeesTab() {
     load()
   }
 
-  const employeesNeedingRollover = angajati.filter((a) => {
-    const profil = getHrProfil(a)
-    return profil.an_referinta != null && profil.an_referinta < CURRENT_YEAR
-  })
+  const employeesNeedingRollover = angajati.filter((a) =>
+    getContracte(a).some((c) => c.an_referinta != null && c.an_referinta < CURRENT_YEAR)
+  )
 
   const editingAngajat = angajati.find((a) => a.id === editingId) || null
 
@@ -142,6 +163,7 @@ export default function EmployeesTab() {
                 <p className="text-xs text-slate-500">
                   {a.department?.name || '—'} {a.position?.name ? `· ${a.position.name}` : ''}
                   {a.email ? ` · ${a.email}` : ''}
+                  {getContracte(a).length > 1 ? ` · ${getContracte(a).length} contracte` : ''}
                 </p>
               </div>
               <button
@@ -160,6 +182,8 @@ export default function EmployeesTab() {
         <HrProfileEditor
           angajat={editingAngajat}
           attributions={attributions}
+          departments={departments}
+          positions={positions}
           onClose={() => setEditingId(null)}
           onSaved={() => {
             setEditingId(null)
@@ -171,21 +195,11 @@ export default function EmployeesTab() {
   )
 }
 
+// Date PERSONALE (tabela hr_profil_angajat). Datele de contract sunt în
+// EMPTY_CONTRACT (tabela hr_contracte), câte unul pentru fiecare contract.
 const EMPTY_PROFIL = {
-  numar_contract: '',
-  data_inceput_contract: '',
-  zile_concediu_baza_an: 21,
+  sex: '',
   sold_recuperari: 0,
-  sold_an_minus_2: 0,
-  sold_an_minus_1: 0,
-  sold_an_curent: 0,
-  tip_contract: '',
-  data_final_contract: '',
-  grad: '',
-  atributie_id: '',
-  norma_ore: '',
-  interval_ora_inceput: '',
-  interval_ora_sfarsit: '',
   adresa: '',
   cnp: '',
   act_serie: '',
@@ -194,12 +208,30 @@ const EMPTY_PROFIL = {
   act_data_eliberare: '',
   act_data_expirare: '',
   telefon: '',
-  are_fisa_postului: '',
-  functie_de_baza: '',
   iban: '',
   observatii: '',
   medicina_muncii_data: '',
   evaluare_data: '',
+}
+
+const EMPTY_CONTRACT = {
+  numar_contract: '',
+  data_inceput_contract: '',
+  tip_contract: '',
+  data_final_contract: '',
+  grad: '',
+  atributie_id: '',
+  departament_id: '',
+  functie_id: '',
+  norma_ore: '',
+  interval_ora_inceput: '',
+  interval_ora_sfarsit: '',
+  are_fisa_postului: '',
+  functie_de_baza: '',
+  zile_concediu_baza_an: 21,
+  sold_an_minus_2: 0,
+  sold_an_minus_1: 0,
+  sold_an_curent: 0,
 }
 
 const TABS = [
@@ -220,7 +252,45 @@ function formToBool(v) {
   return null
 }
 
-function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
+// rând din hr_contracte -> valori pentru formular (câmpurile goale devin '')
+function contractToForm(row) {
+  const f = { id: row.id, este_principal: !!row.este_principal, an_referinta: row.an_referinta }
+  for (const [k, def] of Object.entries(EMPTY_CONTRACT)) {
+    const v = row[k]
+    if (['are_fisa_postului', 'functie_de_baza'].includes(k)) f[k] = boolToForm(v)
+    else f[k] = v ?? def
+  }
+  // valori inițiale ale soldurilor, ca să știm dacă s-au schimbat la salvare
+  f._soldInitial = [row.sold_an_minus_2, row.sold_an_minus_1, row.sold_an_curent, row.zile_concediu_baza_an].join('|')
+  return f
+}
+
+function formToContractPayload(f, principal) {
+  return {
+    numar_contract: String(f.numar_contract || '').trim() || null,
+    data_inceput_contract: f.data_inceput_contract || null,
+    tip_contract: f.tip_contract || null,
+    data_final_contract: f.tip_contract === 'determinat' ? f.data_final_contract || null : null,
+    grad: String(f.grad || '').trim() || null,
+    atributie_id: f.atributie_id || null,
+    // contractul principal folosește departamentul/funcția din Hub
+    departament_id: principal ? null : f.departament_id || null,
+    functie_id: principal ? null : f.functie_id || null,
+    norma_ore: f.norma_ore ? Number(f.norma_ore) : null,
+    interval_ora_inceput: f.interval_ora_inceput || null,
+    interval_ora_sfarsit: f.interval_ora_sfarsit || null,
+    are_fisa_postului: formToBool(f.are_fisa_postului),
+    functie_de_baza: formToBool(f.functie_de_baza),
+    zile_concediu_baza_an: Number(f.zile_concediu_baza_an) || 0,
+    sold_an_minus_2: Number(f.sold_an_minus_2) || 0,
+    sold_an_minus_1: Number(f.sold_an_minus_1) || 0,
+    sold_an_curent: Number(f.sold_an_curent) || 0,
+  }
+}
+
+let contorContractNou = 0
+
+function HrProfileEditor({ angajat, attributions, departments, positions, onClose, onSaved }) {
   const existingProfil = Array.isArray(angajat.hr_profil_angajat)
     ? angajat.hr_profil_angajat[0]
     : angajat.hr_profil_angajat
@@ -230,12 +300,23 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
   const [form, setForm] = useState({
     ...EMPTY_PROFIL,
     ...Object.fromEntries(
-      Object.entries(existingProfil || {}).map(([k, v]) => [
-        k,
-        ['are_fisa_postului', 'functie_de_baza'].includes(k) ? boolToForm(v) : v ?? '',
-      ])
+      Object.keys(EMPTY_PROFIL).map((k) => [k, existingProfil?.[k] ?? EMPTY_PROFIL[k]])
     ),
   })
+
+  // contractele angajatului, ca formulare editabile
+  const [contracte, setContracte] = useState(() => {
+    const lista = getContracte(angajat).map(contractToForm)
+    if (lista.length === 0) {
+      return [{ ...EMPTY_CONTRACT, id: `nou-${++contorContractNou}`, este_principal: true, an_referinta: CURRENT_YEAR }]
+    }
+    return lista
+  })
+  const [contractId, setContractId] = useState(() => (getContractPrincipal(angajat)?.id) || null)
+  const contractActiv = contracte.find((c) => c.id === contractId) || contracte[0]
+  const cf = contractActiv
+  const esteNou = String(cf.id).startsWith('nou-')
+
   const [vechime, setVechime] = useState(angajat.hr_vechime_anterioara || [])
   const [newVechime, setNewVechime] = useState(emptyVechime)
   const [saving, setSaving] = useState(false)
@@ -247,14 +328,69 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  // modifică un câmp al contractului selectat
+  function updC(key, value) {
+    setContracte((lista) => lista.map((c) => (c.id === cf.id ? { ...c, [key]: value } : c)))
+  }
+
+  function adaugaContract() {
+    const id = `nou-${++contorContractNou}`
+    setContracte((lista) => [
+      ...lista,
+      { ...EMPTY_CONTRACT, id, este_principal: false, an_referinta: CURRENT_YEAR },
+    ])
+    setContractId(id)
+    setTab('contract')
+  }
+
+  function etichetaDraft(c, idx) {
+    const atributie = attributions.find((a) => a.id === c.atributie_id)?.name
+    return etichetaContract(
+      { attribution: atributie ? { name: atributie } : null, numar_contract: c.numar_contract, este_principal: c.este_principal },
+      idx
+    )
+  }
+
+  async function setPrincipal() {
+    if (esteNou || cf.este_principal) return
+    setSaving(true)
+    setError('')
+    const { error: err } = await supabase.rpc('seteaza_contract_principal', { p_contract: cf.id })
+    setSaving(false)
+    if (err) {
+      setError('Nu am putut schimba contractul principal.')
+      return
+    }
+    onSaved()
+  }
+
+  async function stergeContract() {
+    if (cf.este_principal) return
+    if (!confirm('Ștergi acest contract? Zilele deja scăzute din el rămân în istoricul cererilor.')) return
+    if (!esteNou) {
+      const { error: err } = await supabase.from('hr_contracte').delete().eq('id', cf.id)
+      if (err) {
+        setError('Nu am putut șterge contractul.')
+        return
+      }
+    }
+    const rest = contracte.filter((c) => c.id !== cf.id)
+    setContracte(rest)
+    setContractId(rest.find((c) => c.este_principal)?.id || rest[0]?.id)
+    if (!esteNou) onSaved()
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setError('')
 
-    if (form.tip_contract === 'determinat' && !form.data_final_contract) {
-      setError('Contractul determinat are nevoie de o dată de final.')
-      setTab('contract')
-      return
+    for (const c of contracte) {
+      if (c.tip_contract === 'determinat' && !c.data_final_contract) {
+        setError(`Contractul "${etichetaDraft(c, contracte.indexOf(c))}" (determinat) are nevoie de o dată de final.`)
+        setContractId(c.id)
+        setTab('contract')
+        return
+      }
     }
     if (form.observatii && form.observatii.length > 200) {
       setError('Observațiile pot avea maximum 200 de caractere.')
@@ -264,23 +400,15 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
 
     setSaving(true)
 
+    const principalDraft = contracte.find((c) => c.este_principal) || contracte[0]
+    const principalPayload = formToContractPayload(principalDraft, true)
+
+    // 1) datele personale (+ copie a contractului principal în coloanele
+    //    vechi, doar ca rezervă pentru eventuala revenire)
     const { error: profilError } = await supabase.from('hr_profil_angajat').upsert({
       angajat_id: angajat.id,
-      numar_contract: form.numar_contract.trim() || null,
-      data_inceput_contract: form.data_inceput_contract || null,
-      zile_concediu_baza_an: Number(form.zile_concediu_baza_an) || 0,
+      sex: form.sex || null,
       sold_recuperari: Number(form.sold_recuperari) || 0,
-      sold_an_minus_2: Number(form.sold_an_minus_2) || 0,
-      sold_an_minus_1: Number(form.sold_an_minus_1) || 0,
-      sold_an_curent: Number(form.sold_an_curent) || 0,
-      an_referinta: CURRENT_YEAR,
-      tip_contract: form.tip_contract || null,
-      data_final_contract: form.tip_contract === 'determinat' ? form.data_final_contract || null : null,
-      grad: form.grad.trim() || null,
-      atributie_id: form.atributie_id || null,
-      norma_ore: form.norma_ore ? Number(form.norma_ore) : null,
-      interval_ora_inceput: form.interval_ora_inceput || null,
-      interval_ora_sfarsit: form.interval_ora_sfarsit || null,
       adresa: form.adresa.trim() || null,
       cnp: form.cnp.trim() || null,
       act_serie: form.act_serie.trim() || null,
@@ -289,19 +417,62 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
       act_data_eliberare: form.act_data_eliberare || null,
       act_data_expirare: form.act_data_expirare || null,
       telefon: form.telefon.trim() || null,
-      are_fisa_postului: formToBool(form.are_fisa_postului),
-      functie_de_baza: formToBool(form.functie_de_baza),
       iban: form.iban.trim() || null,
       observatii: form.observatii.trim() || null,
       medicina_muncii_data: form.medicina_muncii_data || null,
       evaluare_data: form.evaluare_data || null,
+      numar_contract: principalPayload.numar_contract,
+      data_inceput_contract: principalPayload.data_inceput_contract,
+      tip_contract: principalPayload.tip_contract,
+      data_final_contract: principalPayload.data_final_contract,
+      grad: principalPayload.grad,
+      atributie_id: principalPayload.atributie_id,
+      norma_ore: principalPayload.norma_ore,
+      interval_ora_inceput: principalPayload.interval_ora_inceput,
+      interval_ora_sfarsit: principalPayload.interval_ora_sfarsit,
+      are_fisa_postului: principalPayload.are_fisa_postului,
+      functie_de_baza: principalPayload.functie_de_baza,
+      zile_concediu_baza_an: principalPayload.zile_concediu_baza_an,
+      sold_an_minus_2: principalPayload.sold_an_minus_2,
+      sold_an_minus_1: principalPayload.sold_an_minus_1,
+      sold_an_curent: principalPayload.sold_an_curent,
+      an_referinta: CURRENT_YEAR,
     })
 
-    setSaving(false)
     if (profilError) {
+      setSaving(false)
       setError('Nu am putut salva profilul HR.')
       return
     }
+
+    // 2) fiecare contract: nou -> insert, existent -> update
+    for (const c of contracte) {
+      const payload = formToContractPayload(c, c.este_principal)
+      const soldSchimbat =
+        [payload.sold_an_minus_2, payload.sold_an_minus_1, payload.sold_an_curent, payload.zile_concediu_baza_an].join('|') !==
+        c._soldInitial
+      let err
+      if (String(c.id).startsWith('nou-')) {
+        ;({ error: err } = await supabase.from('hr_contracte').insert({
+          ...payload,
+          angajat_id: angajat.id,
+          este_principal: c.este_principal,
+          an_referinta: CURRENT_YEAR,
+        }))
+      } else {
+        ;({ error: err } = await supabase
+          .from('hr_contracte')
+          .update({ ...payload, ...(soldSchimbat ? { an_referinta: CURRENT_YEAR } : {}) })
+          .eq('id', c.id))
+      }
+      if (err) {
+        setSaving(false)
+        setError('Nu am putut salva unul dintre contracte.')
+        return
+      }
+    }
+
+    setSaving(false)
     onSaved()
   }
 
@@ -357,14 +528,81 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
 
         <div className="max-h-[65vh] overflow-y-auto p-6">
           <form onSubmit={handleSave} className="space-y-4">
+                        {(tab === 'contract' || tab === 'solduri') && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {contracte.map((c, i) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setContractId(c.id)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        c.id === cf.id ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {etichetaDraft(c, i)}
+                      {String(c.id).startsWith('nou-') ? ' · nou' : ''}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={adaugaContract}
+                    className="flex items-center gap-1 rounded-full border border-dashed border-brand-400 px-3 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                  >
+                    <Plus size={12} /> Contract nou
+                  </button>
+                </div>
+                {contracte.length > 1 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    {cf.este_principal ? (
+                      <span>Acesta este contractul principal (departamentul și funcția vin din Hub).</span>
+                    ) : (
+                      <>
+                        {!esteNou && (
+                          <button type="button" onClick={setPrincipal} disabled={saving}
+                            className="rounded-full bg-white px-3 py-1 font-medium text-brand-700 border border-brand-200 hover:bg-brand-50">
+                            Setează ca principal
+                          </button>
+                        )}
+                        <button type="button" onClick={stergeContract}
+                          className="rounded-full bg-white px-3 py-1 font-medium text-rose-600 border border-rose-200 hover:bg-rose-50">
+                          Șterge contractul
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {tab === 'contract' && (
               <div className="space-y-4">
+                {!cf.este_principal && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Departament (acest contract)</label>
+                      <select value={cf.departament_id || ''} onChange={(e) => updC('departament_id', e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
+                        <option value="">— Alege —</option>
+                        {(departments || []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Funcție (acest contract)</label>
+                      <select value={cf.functie_id || ''} onChange={(e) => updC('functie_id', e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
+                        <option value="">— Alege —</option>
+                        {(positions || []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Tip contract</label>
                     <select
-                      value={form.tip_contract}
-                      onChange={(e) => upd('tip_contract', e.target.value)}
+                      value={cf.tip_contract}
+                      onChange={(e) => updC('tip_contract', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
@@ -376,20 +614,20 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                     <label className="mb-1 block text-xs font-medium text-slate-600">Data început contract</label>
                     <input
                       type="date"
-                      value={form.data_inceput_contract || ''}
-                      onChange={(e) => upd('data_inceput_contract', e.target.value)}
+                      value={cf.data_inceput_contract || ''}
+                      onChange={(e) => updC('data_inceput_contract', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                     />
                   </div>
-                  {form.tip_contract === 'determinat' && (
+                  {cf.tip_contract === 'determinat' && (
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-600">
                         Data final contract <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="date"
-                        value={form.data_final_contract || ''}
-                        onChange={(e) => upd('data_final_contract', e.target.value)}
+                        value={cf.data_final_contract || ''}
+                        onChange={(e) => updC('data_final_contract', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -397,8 +635,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Numărul contractului</label>
                     <input
-                      value={form.numar_contract}
-                      onChange={(e) => upd('numar_contract', e.target.value)}
+                      value={cf.numar_contract}
+                      onChange={(e) => updC('numar_contract', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                     />
                   </div>
@@ -414,16 +652,16 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Grad</label>
                     <input
-                      value={form.grad}
-                      onChange={(e) => upd('grad', e.target.value)}
+                      value={cf.grad}
+                      onChange={(e) => updC('grad', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Atribuție</label>
                     <select
-                      value={form.atributie_id}
-                      onChange={(e) => upd('atributie_id', e.target.value)}
+                      value={cf.atributie_id}
+                      onChange={(e) => updC('atributie_id', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
@@ -435,8 +673,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Normă de lucru</label>
                     <select
-                      value={form.norma_ore}
-                      onChange={(e) => upd('norma_ore', e.target.value)}
+                      value={cf.norma_ore}
+                      onChange={(e) => updC('norma_ore', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
@@ -450,8 +688,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                       <label className="mb-1 block text-xs font-medium text-slate-600">Ora început</label>
                       <input
                         type="time"
-                        value={form.interval_ora_inceput}
-                        onChange={(e) => upd('interval_ora_inceput', e.target.value)}
+                        value={cf.interval_ora_inceput}
+                        onChange={(e) => updC('interval_ora_inceput', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -459,8 +697,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                       <label className="mb-1 block text-xs font-medium text-slate-600">Ora sfârșit</label>
                       <input
                         type="time"
-                        value={form.interval_ora_sfarsit}
-                        onChange={(e) => upd('interval_ora_sfarsit', e.target.value)}
+                        value={cf.interval_ora_sfarsit}
+                        onChange={(e) => updC('interval_ora_sfarsit', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -468,8 +706,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Fișa postului</label>
                     <select
-                      value={form.are_fisa_postului}
-                      onChange={(e) => upd('are_fisa_postului', e.target.value)}
+                      value={cf.are_fisa_postului}
+                      onChange={(e) => updC('are_fisa_postului', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
@@ -480,8 +718,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">Funcția de bază</label>
                     <select
-                      value={form.functie_de_baza}
-                      onChange={(e) => upd('functie_de_baza', e.target.value)}
+                      value={cf.functie_de_baza}
+                      onChange={(e) => updC('functie_de_baza', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
@@ -496,6 +734,15 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
             {tab === 'personal' && (
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">Sex</label>
+                    <select value={form.sex || ''} onChange={(e) => upd('sex', e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
+                      <option value="">— Alege —</option>
+                      <option value="F">Feminin</option>
+                      <option value="M">Masculin</option>
+                    </select>
+                  </div>
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-xs font-medium text-slate-600">Adresă</label>
                     <input
@@ -615,8 +862,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   <input
                     type="number"
                     step="0.5"
-                    value={form.zile_concediu_baza_an}
-                    onChange={(e) => upd('zile_concediu_baza_an', e.target.value)}
+                    value={cf.zile_concediu_baza_an}
+                    onChange={(e) => updC('zile_concediu_baza_an', e.target.value)}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                   />
                 </div>
@@ -628,7 +875,7 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">Recuperări</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Recuperări (la persoană)</label>
                       <input
                         type="number"
                         step="0.5"
@@ -644,8 +891,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                       <input
                         type="number"
                         step="0.5"
-                        value={form.sold_an_minus_2}
-                        onChange={(e) => upd('sold_an_minus_2', e.target.value)}
+                        value={cf.sold_an_minus_2}
+                        onChange={(e) => updC('sold_an_minus_2', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -654,8 +901,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                       <input
                         type="number"
                         step="0.5"
-                        value={form.sold_an_minus_1}
-                        onChange={(e) => upd('sold_an_minus_1', e.target.value)}
+                        value={cf.sold_an_minus_1}
+                        onChange={(e) => updC('sold_an_minus_1', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -666,8 +913,8 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
                       <input
                         type="number"
                         step="0.5"
-                        value={form.sold_an_curent}
-                        onChange={(e) => upd('sold_an_curent', e.target.value)}
+                        value={cf.sold_an_curent}
+                        onChange={(e) => updC('sold_an_curent', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
                     </div>
@@ -766,9 +1013,16 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
             <ActeAditionale
               angajat={angajat}
               profil={form}
+              contracte={contracte}
+              etichetaDraft={etichetaDraft}
               attributions={attributions}
-              onApplied={(updates) => {
-                setForm((f) => ({ ...f, ...updates }))
+              onApplied={(updates, contractIdAplicat) => {
+                const pers = {}
+                const contr = {}
+                for (const [k, v] of Object.entries(updates)) (esteCampContract(k) ? contr : pers)[k] = v
+                if (Object.keys(pers).length) setForm((f) => ({ ...f, ...pers }))
+                if (contractIdAplicat && Object.keys(contr).length)
+                  setContracte((l) => l.map((c) => (c.id === contractIdAplicat ? { ...c, ...contr } : c)))
                 onSaved()
               }}
             />
@@ -779,7 +1033,14 @@ function HrProfileEditor({ angajat, attributions, onClose, onSaved }) {
   )
 }
 
-function ActeAditionale({ angajat, profil, attributions, onApplied }) {
+function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attributions, onApplied }) {
+  const salvate = contracte.filter((c) => !String(c.id).startsWith('nou-'))
+  const [contractAles, setContractAles] = useState(
+    () => (salvate.find((c) => c.este_principal) || salvate[0])?.id || ''
+  )
+  const contractSel = salvate.find((c) => c.id === contractAles)
+  // valoarea actuală a unui câmp: din contractul ales sau din datele personale
+  const valoareActuala = (key) => (esteCampContract(key) ? contractSel?.[key] : profil[key])
   const [istoric, setIstoric] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -807,7 +1068,7 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
   function toggleCamp(key) {
     setSelectate((s) => ({ ...s, [key]: !s[key] }))
     if (!valoriNoi[key]) {
-      setValoriNoi((v) => ({ ...v, [key]: profil[key] ?? '' }))
+      setValoriNoi((v) => ({ ...v, [key]: valoareActuala(key) ?? '' }))
     }
   }
 
@@ -824,23 +1085,42 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
     setSaving(true)
 
     const modificari = {}
-    const updatePayload = { angajat_id: angajat.id }
+    const updatePayload = {}
+    const updateContract = {}
+    if (campuriAlese.some(esteCampContract) && !contractSel) {
+      setSaving(false)
+      setError('Alege contractul la care se aplică actul adițional.')
+      return
+    }
     for (const key of campuriAlese) {
       const camp = CAMPURI_MODIFICABILE.find((c) => c.key === key)
       let valoareNoua = valoriNoi[key]
       if (camp.type === 'boolean') valoareNoua = valoareNoua === 'da'
       if (camp.type === 'select' && ['norma_ore'].includes(key)) valoareNoua = Number(valoareNoua)
 
-      modificari[key] = { de_la: profil[key] ?? null, la: valoareNoua }
-      updatePayload[key] = valoareNoua === '' ? null : valoareNoua
+      modificari[key] = { de_la: valoareActuala(key) ?? null, la: valoareNoua }
+      ;(esteCampContract(key) ? updateContract : updatePayload)[key] = valoareNoua === '' ? null : valoareNoua
     }
 
+    const aplicatPeContract = campuriAlese.some(esteCampContract)
     const { error: err1 } = await supabase.from('hr_acte_aditionale').insert({
       angajat_id: angajat.id,
       data,
       modificari,
+      contract_id: aplicatPeContract ? contractSel.id : null,
     })
-    const { error: err2 } = await supabase.from('hr_profil_angajat').update(updatePayload).eq('angajat_id', angajat.id)
+    let err2 = null
+    if (Object.keys(updatePayload).length) {
+      ;({ error: err2 } = await supabase.from('hr_profil_angajat').update(updatePayload).eq('angajat_id', angajat.id))
+    }
+    if (!err2 && Object.keys(updateContract).length) {
+      ;({ error: err2 } = await supabase.from('hr_contracte').update(updateContract).eq('id', contractSel.id))
+      // contractul principal: păstrăm și copia din coloanele vechi
+      if (!err2 && contractSel.este_principal) {
+        const { atributie_id, ...rest } = updateContract
+        await supabase.from('hr_profil_angajat').update({ ...rest, ...(atributie_id !== undefined ? { atributie_id } : {}) }).eq('angajat_id', angajat.id)
+      }
+    }
 
     setSaving(false)
     if (err1 || err2) {
@@ -858,7 +1138,7 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
     setSelectate({})
     setValoriNoi({})
     setShowForm(false)
-    onApplied(formUpdates)
+    onApplied(formUpdates, aplicatPeContract ? contractSel.id : null)
     load()
   }
 
@@ -887,6 +1167,21 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
             />
           </div>
 
+          {salvate.length > 1 && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">La ce contract se aplică (pentru câmpurile de contract)</label>
+              <select
+                value={contractAles}
+                onChange={(e) => { setContractAles(e.target.value); setValoriNoi({}) }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus-ring"
+              >
+                {salvate.map((c) => (
+                  <option key={c.id} value={c.id}>{etichetaDraft(c, contracte.indexOf(c))}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-600">Ce se modifică?</p>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
@@ -904,7 +1199,7 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
               {CAMPURI_MODIFICABILE.filter((c) => selectate[c.key]).map((c) => (
                 <div key={c.key}>
                   <label className="mb-1 block text-[11px] font-medium text-slate-600">
-                    {c.label} <span className="text-slate-400">(actual: {formatValoare(c.key, profil[c.key], attributions)})</span>
+                    {c.label} <span className="text-slate-400">(actual: {formatValoare(c.key, valoareActuala(c.key), attributions)})</span>
                   </label>
                   {c.type === 'select' && (
                     <select
@@ -981,7 +1276,12 @@ function ActeAditionale({ angajat, profil, attributions, onApplied }) {
         <div className="space-y-2">
           {istoric.map((act) => (
             <div key={act.id} className="rounded-lg border border-slate-100 p-2.5 text-xs">
-              <p className="mb-1 font-medium text-slate-700">{act.data}</p>
+              <p className="mb-1 font-medium text-slate-700">
+                {act.data}
+                {act.contract_id && contracte.length > 1 && contracte.find((c) => c.id === act.contract_id)
+                  ? ` · ${etichetaDraft(contracte.find((c) => c.id === act.contract_id), contracte.findIndex((c) => c.id === act.contract_id))}`
+                  : ''}
+              </p>
               {Object.entries(act.modificari).map(([key, { de_la, la }]) => (
                 <p key={key} className="text-slate-500">
                   {labelPentruCamp(key)}: {formatValoare(key, de_la, attributions)} → <strong className="text-slate-700">{formatValoare(key, la, attributions)}</strong>

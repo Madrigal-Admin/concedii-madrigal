@@ -3,9 +3,12 @@ import { Check, X, Pencil, Save, X as XIcon, Plus, ChevronDown, FileDown, ArrowR
 import { supabase } from '../../supabaseClient'
 import {
   formatDate,
-  calculateBalance,
-  computeDefaultSplit,
-  splitToDeduction,
+  buildDeduction,
+  getContracte,
+  getContractPrincipal,
+  contractActivInPerioada,
+  aniDinDeduction,
+  etichetaContract,
   countLeaveDays,
   TYPES_THAT_DEDUCT_BALANCE,
   LEAVE_TYPES,
@@ -26,7 +29,7 @@ export default function ApprovalsTab() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [editingId, setEditingId] = useState(null)
-  const [editForm, setEditForm] = useState({ recoveries: 0, y2: 0, y1: 0, y: 0 })
+  const [editForm, setEditForm] = useState({ recoveries: 0, contracte: {} })
   const [editError, setEditError] = useState('')
   const [docBusyId, setDocBusyId] = useState(null)
   const [docErrorId, setDocErrorId] = useState(null)
@@ -39,7 +42,7 @@ export default function ApprovalsTab() {
     setLoading(true)
     const [{ data }, { data: emps }] = await Promise.all([
       supabase.from('leave_requests').select('*').order('created_at', { ascending: false }),
-      supabase.from('angajati').select('id, department:departments(name), position:positions(name)'),
+      supabase.from('angajati').select('id, department:departments(name), position:positions(name), hr_contracte(*, attribution:attributions(name))'),
     ])
     setRequests(data || [])
     setEmployees(emps || [])
@@ -72,7 +75,7 @@ export default function ApprovalsTab() {
 
     if (TYPES_THAT_DEDUCT_BALANCE.includes(request.leave_type)) {
       const [{ data: employee }, { data: otherApproved }, { data: recoveries }] = await Promise.all([
-        supabase.from('angajati').select('*, hr_profil_angajat(*)').eq('id', request.angajat_id).maybeSingle(),
+        supabase.from('angajati').select('*, hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name))').eq('id', request.angajat_id).maybeSingle(),
         supabase
           .from('leave_requests')
           .select('*')
@@ -83,9 +86,9 @@ export default function ApprovalsTab() {
       ])
 
       if (employee) {
-        const pools = calculateBalance(employee, otherApproved || [], recoveries || [])
-        const split = computeDefaultSplit(request.working_days, pools)
-        deduction = splitToDeduction(split, pools)
+        // Recuperările se scad o singură dată, restul zilelor din FIECARE
+        // contract în vigoare în perioada concediului.
+        deduction = buildDeduction(request, employee, otherApproved || [], recoveries || [])
       }
     }
 
@@ -108,16 +111,33 @@ export default function ApprovalsTab() {
     setBusyId(null)
   }
 
+  // Contractele afișate la editarea distribuției unei cereri: cele în vigoare
+  // în perioada concediului + orice contract care apare deja în distribuție.
+  function contractePentruCerere(r) {
+    const emp = employees.find((e) => e.id === r.angajat_id)
+    const toate = getContracte(emp)
+    const dinDeduction = Object.keys((r.deduction || {}).contracte || {})
+    return toate.filter(
+      (c) => contractActivInPerioada(c, r.start_date, r.end_date) || dinDeduction.includes(c.id)
+    )
+  }
+
   function startEdit(r) {
     setEditingId(r.id)
     setEditError('')
+    const emp = employees.find((e) => e.id === r.angajat_id)
+    const principalId = getContractPrincipal(emp)?.id
     const d = r.deduction || {}
-    setEditForm({
-      recoveries: d.recoveries || 0,
-      y2: d[String(YEAR_Y2)] || 0,
-      y1: d[String(YEAR_Y1)] || 0,
-      y: d[String(YEAR_Y)] || 0,
-    })
+    const contracte = {}
+    for (const c of contractePentruCerere(r)) {
+      const ani = aniDinDeduction(d, c.id, principalId)
+      contracte[c.id] = {
+        y2: ani[String(YEAR_Y2)] || 0,
+        y1: ani[String(YEAR_Y1)] || 0,
+        y: ani[String(YEAR_Y)] || 0,
+      }
+    }
+    setEditForm({ recoveries: d.recoveries || 0, contracte })
   }
 
   function cancelEdit() {
@@ -126,28 +146,40 @@ export default function ApprovalsTab() {
   }
 
   async function saveEdit(r) {
-    const sum =
-      Number(editForm.recoveries || 0) +
-      Number(editForm.y2 || 0) +
-      Number(editForm.y1 || 0) +
-      Number(editForm.y || 0)
+    const recuperari = Number(editForm.recoveries || 0)
+    const ids = Object.keys(editForm.contracte)
 
-    if (Math.abs(sum - Number(r.working_days)) > 0.01) {
-      setEditError(`Suma trebuie să fie exact ${r.working_days} zile (acum: ${sum}).`)
+    for (const id of ids) {
+      const c = editForm.contracte[id]
+      const sum = recuperari + Number(c.y2 || 0) + Number(c.y1 || 0) + Number(c.y || 0)
+      if (Math.abs(sum - Number(r.working_days)) > 0.01) {
+        const emp = employees.find((e) => e.id === r.angajat_id)
+        const contract = getContracte(emp).find((x) => x.id === id)
+        setEditError(
+          `Pentru ${etichetaContract(contract)}: recuperările + cele 3 câmpuri trebuie să fie exact ${r.working_days} zile (acum: ${sum}).`
+        )
+        return
+      }
+    }
+    if (ids.length === 0 && Math.abs(recuperari - Number(r.working_days)) > 0.01) {
+      setEditError(`Suma trebuie să fie exact ${r.working_days} zile (acum: ${recuperari}).`)
       return
+    }
+
+    const contracte = {}
+    for (const id of ids) {
+      const c = editForm.contracte[id]
+      contracte[id] = {
+        [String(YEAR_Y2)]: Number(c.y2) || 0,
+        [String(YEAR_Y1)]: Number(c.y1) || 0,
+        [String(YEAR_Y)]: Number(c.y) || 0,
+      }
     }
 
     setBusyId(r.id)
     await supabase
       .from('leave_requests')
-      .update({
-        deduction: {
-          recoveries: Number(editForm.recoveries) || 0,
-          [String(YEAR_Y2)]: Number(editForm.y2) || 0,
-          [String(YEAR_Y1)]: Number(editForm.y1) || 0,
-          [String(YEAR_Y)]: Number(editForm.y) || 0,
-        },
-      })
+      .update({ deduction: { recoveries: recuperari, contracte } })
       .eq('id', r.id)
     await load()
     setBusyId(null)
@@ -280,7 +312,23 @@ export default function ApprovalsTab() {
             const isApproved = r.status === 'approved'
             const isEditing = editingId === r.id
             const d = r.deduction || {}
-            const badgeEntries = Object.entries(d).filter(([, v]) => Number(v) !== 0)
+            const empRand = employees.find((e) => e.id === r.angajat_id)
+            const principalId = getContractPrincipal(empRand)?.id
+            const contracteEmp = getContracte(empRand)
+            const multipleContracte = contracteEmp.length > 1
+            // insigne: recuperări + zilele scăzute din fiecare contract, pe ani
+            const badgeEntries = []
+            if (Number(d.recoveries) !== 0 && d.recoveries != null) {
+              badgeEntries.push(['recoveries', 'Recuperări', d.recoveries])
+            }
+            const idsInDeduction = d.contracte ? Object.keys(d.contracte) : principalId ? [principalId] : []
+            for (const cid of idsInDeduction) {
+              const contract = contracteEmp.find((c) => c.id === cid)
+              const prefix = multipleContracte && contract ? `${etichetaContract(contract)} · ` : ''
+              for (const [an, val] of Object.entries(aniDinDeduction(d, cid, principalId))) {
+                if (Number(val) !== 0) badgeEntries.push([`${cid}-${an}`, `${prefix}Anul ${an}`, val])
+              }
+            }
 
             return (
               <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
@@ -314,12 +362,12 @@ export default function ApprovalsTab() {
                         Nu scade din sold
                       </span>
                     )}
-                    {badgeEntries.map(([key, value]) => (
+                    {badgeEntries.map(([key, label, value]) => (
                       <span
                         key={key}
                         className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                       >
-                        {key === 'recoveries' ? 'Recuperări' : `Anul ${key}`}: {value}
+                        {label}: {value}
                       </span>
                     ))}
                     <button
@@ -338,29 +386,55 @@ export default function ApprovalsTab() {
                 {isApproved && isEditing && (
                   <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-3">
                     <p className="mb-2 text-xs text-brand-800">
-                      Suma celor 4 câmpuri trebuie să fie exact {r.working_days} zile.
+                      Recuperările se scad o singură dată. Pentru fiecare contract, recuperările + zilele
+                      din ani trebuie să dea exact {r.working_days} zile.
                     </p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {[
-                        ['recoveries', 'Recuperări'],
-                        ['y2', `Anul ${YEAR_Y2}`],
-                        ['y1', `Anul ${YEAR_Y1}`],
-                        ['y', `Anul ${YEAR_Y} (curent)`],
-                      ].map(([key, label]) => (
-                        <div key={key}>
-                          <label className="mb-1 block text-[11px] font-medium text-slate-600">
-                            {label}
-                          </label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={editForm[key]}
-                            onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                            className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus-ring"
-                          />
-                        </div>
-                      ))}
+                    <div className="mb-3 max-w-[10rem]">
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Recuperări</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editForm.recoveries}
+                        onChange={(e) => setEditForm({ ...editForm, recoveries: e.target.value })}
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus-ring"
+                      />
                     </div>
+                    {Object.keys(editForm.contracte).map((cid) => {
+                      const contract = contracteEmp.find((c) => c.id === cid)
+                      return (
+                        <div key={cid} className="mb-3">
+                          {multipleContracte && (
+                            <p className="mb-1 text-xs font-semibold text-slate-700">{etichetaContract(contract)}</p>
+                          )}
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              ['y2', `Anul ${YEAR_Y2}`],
+                              ['y1', `Anul ${YEAR_Y1}`],
+                              ['y', `Anul ${YEAR_Y} (curent)`],
+                            ].map(([key, label]) => (
+                              <div key={key}>
+                                <label className="mb-1 block text-[11px] font-medium text-slate-600">{label}</label>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  value={editForm.contracte[cid][key]}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      contracte: {
+                                        ...editForm.contracte,
+                                        [cid]: { ...editForm.contracte[cid], [key]: e.target.value },
+                                      },
+                                    })
+                                  }
+                                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus-ring"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
                     {editError && <p className="mt-2 text-xs text-rose-600">{editError}</p>}
                     <div className="mt-3 flex gap-2">
                       <button

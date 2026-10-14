@@ -102,17 +102,101 @@ function june30(year) {
   return new Date(year, 5, 30, 23, 59, 59)
 }
 
-// hr_profil_angajat vine ca obiect unic sau ca array cu un element, în
-// funcție de cum a fost făcut join-ul Supabase — normalizăm aici o singură
-// dată, ca restul fișierului (și alte componente) să nu se mai gândească
-// la asta.
-export function getHrProfil(employee) {
-  const p = employee?.hr_profil_angajat
-  return (Array.isArray(p) ? p[0] : p) || {}
+// Câmpurile care aparțin CONTRACTULUI (tabela hr_contracte). Restul câmpurilor
+// din hr_profil_angajat (CNP, IBAN, act de identitate, sex, recuperări etc.)
+// aparțin PERSOANEI.
+export const CONTRACT_FIELDS = [
+  'numar_contract',
+  'data_inceput_contract',
+  'tip_contract',
+  'data_final_contract',
+  'grad',
+  'atributie_id',
+  'attribution',
+  'norma_ore',
+  'interval_ora_inceput',
+  'interval_ora_sfarsit',
+  'are_fisa_postului',
+  'functie_de_baza',
+  'zile_concediu_baza_an',
+  'sold_an_minus_2',
+  'sold_an_minus_1',
+  'sold_an_curent',
+  'an_referinta',
+]
+
+/** Toate contractele angajatului, cel principal primul. */
+export function getContracte(employee) {
+  const lista = Array.isArray(employee?.hr_contracte) ? [...employee.hr_contracte] : []
+  return lista.sort((a, b) => {
+    if (a.este_principal !== b.este_principal) return a.este_principal ? -1 : 1
+    return String(a.data_inceput_contract || '').localeCompare(String(b.data_inceput_contract || ''))
+  })
 }
 
-function usedForYear(approvedRequests, year) {
-  return approvedRequests.reduce((s, r) => s + Number((r.deduction && r.deduction[String(year)]) || 0), 0)
+export function getContractPrincipal(employee) {
+  const lista = getContracte(employee)
+  return lista.find((c) => c.este_principal) || lista[0] || null
+}
+
+/** Contractul e în vigoare în (cel puțin o zi din) perioada dată? */
+export function contractActivInPerioada(contract, startDate, endDate) {
+  const inceput = contract.data_inceput_contract
+  const final = contract.data_final_contract
+  if (inceput && inceput > endDate) return false
+  if (final && final < startDate) return false
+  return true
+}
+
+/** Etichetă scurtă pentru un contract, ex.: "Referent · nr. 12/2024". */
+export function etichetaContract(contract, idx) {
+  if (!contract) return 'Contract'
+  const parti = []
+  const atributie = contract.attribution?.name
+  if (atributie) parti.push(atributie)
+  if (contract.numar_contract) parti.push(`nr. ${contract.numar_contract}`)
+  if (parti.length === 0) parti.push(`Contract ${typeof idx === 'number' ? idx + 1 : ''}`.trim())
+  return parti.join(' · ') + (contract.este_principal ? ' (principal)' : '')
+}
+
+// hr_profil_angajat vine ca obiect unic sau ca array cu un element, în
+// funcție de cum a fost făcut join-ul Supabase — normalizăm aici o singură
+// dată.
+// Întoarce datele PERSONALE ale angajatului, la care se adaugă (pentru
+// compatibilitate cu ecranele existente) câmpurile CONTRACTULUI PRINCIPAL.
+export function getHrProfil(employee) {
+  const p = employee?.hr_profil_angajat
+  const personal = (Array.isArray(p) ? p[0] : p) || {}
+  const principal = getContractPrincipal(employee)
+  if (!principal) return personal
+
+  const supra = {}
+  for (const k of CONTRACT_FIELDS) {
+    if (k in principal) supra[k] = principal[k]
+  }
+  return { ...personal, ...supra }
+}
+
+// Cât s-a scăzut dintr-un contract, pe ani, dintr-o cerere aprobată.
+// Format nou: { recoveries, contracte: { <id>: { "2025": 1, ... } } }.
+// Format vechi (cereri dinainte de contractele multiple): { recoveries,
+// "2025": 1, ... } — se consideră scăzut din contractul principal.
+function aniScazutiDinContract(deduction, contractId, principalId) {
+  const d = deduction || {}
+  if (d.contracte) return d.contracte[contractId] || {}
+  if (contractId === principalId) {
+    // eslint-disable-next-line no-unused-vars
+    const { recoveries, ...ani } = d
+    return ani
+  }
+  return {}
+}
+
+function usedForYear(approvedRequests, year, contractId, principalId) {
+  return approvedRequests.reduce(
+    (s, r) => s + Number(aniScazutiDinContract(r.deduction, contractId, principalId)[String(year)] || 0),
+    0
+  )
 }
 
 /**
@@ -133,8 +217,14 @@ function usedForYear(approvedRequests, year) {
  * @param {array} recoveries - rândurile din overtime_recoveries ale angajatului
  * @param {Date} asOf - data de referință (implicit azi)
  */
-export function calculateBalance(employee, approvedRequests, recoveries, asOf = new Date()) {
-  const profil = getHrProfil(employee)
+export function calculateBalance(employee, approvedRequests, recoveries, asOf = new Date(), contract = null) {
+  // Recuperările sunt la PERSOANĂ (hr_profil_angajat); zilele pe ani sunt la
+  // CONTRACT. Fără contract specificat se folosește cel principal.
+  const personal = getHrProfil({ hr_profil_angajat: employee?.hr_profil_angajat })
+  const principal = getContractPrincipal(employee)
+  const c = contract || principal || {}
+  const principalId = principal?.id
+  const profil = { ...personal, ...c }
   const currentYear = asOf.getFullYear()
   const yearY = currentYear
   const yearY1 = currentYear - 1
@@ -142,13 +232,13 @@ export function calculateBalance(employee, approvedRequests, recoveries, asOf = 
 
   const y2Expired = asOf > june30(currentYear)
 
-  const openingRecoveries = Number(profil.sold_recuperari) || 0
+  const openingRecoveries = Number(personal.sold_recuperari) || 0
   const totalRecoveriesEarned = openingRecoveries + recoveries.reduce((s, r) => s + Number(r.days || 0), 0)
   const usedRecoveries = approvedRequests.reduce((s, r) => s + Number((r.deduction && r.deduction.recoveries) || 0), 0)
 
-  const usedY2 = usedForYear(approvedRequests, yearY2)
-  const usedY1 = usedForYear(approvedRequests, yearY1)
-  const usedY = usedForYear(approvedRequests, yearY)
+  const usedY2 = usedForYear(approvedRequests, yearY2, c.id, principalId)
+  const usedY1 = usedForYear(approvedRequests, yearY1, c.id, principalId)
+  const usedY = usedForYear(approvedRequests, yearY, c.id, principalId)
 
   const allocY2 = Number(profil.sold_an_minus_2) || 0
   const allocY1 = Number(profil.sold_an_minus_1) || 0
@@ -211,6 +301,64 @@ export function splitToDeduction(split, pools) {
     [String(pools.yearY1)]: split.y1 || 0,
     [String(pools.year)]: split.y || 0,
   }
+}
+
+/**
+ * Soldul FIECĂRUI contract al angajatului (cel principal primul).
+ * Recuperările sunt la persoană, deci au aceeași valoare în fiecare element.
+ */
+export function calculateBalances(employee, approvedRequests, recoveries, asOf = new Date()) {
+  const contracte = getContracte(employee)
+  if (contracte.length === 0) {
+    return [{ contract: null, ...calculateBalance(employee, approvedRequests, recoveries, asOf) }]
+  }
+  return contracte.map((contract) => ({
+    contract,
+    ...calculateBalance(employee, approvedRequests, recoveries, asOf, contract),
+  }))
+}
+
+/**
+ * Construiește "deduction" pentru o cerere care se aprobă, după regula:
+ *  - recuperările (la persoană) se scad O SINGURĂ DATĂ, mai întâi;
+ *  - restul zilelor se scad din FIECARE contract în vigoare în perioada
+ *    concediului (din zilele lui: anul -2, apoi -1, apoi curent).
+ * otherApproved = cererile aprobate ale angajatului, fără aceasta.
+ */
+export function buildDeduction(request, employee, otherApproved, recoveries, asOf = new Date()) {
+  const zile = Number(request.working_days) || 0
+  const contracte = getContracte(employee)
+  let active = contracte.filter((c) => contractActivInPerioada(c, request.start_date, request.end_date))
+  if (active.length === 0) {
+    const principal = getContractPrincipal(employee)
+    active = principal ? [principal] : []
+  }
+
+  const baza = calculateBalance(employee, otherApproved, recoveries, asOf, active[0] || null)
+  const recuperariFolosite = round1(Math.min(Math.max(0, baza.recoveries), zile))
+  const ramase = round1(zile - recuperariFolosite)
+
+  if (active.length === 0) {
+    // angajat fără niciun contract înregistrat: păstrăm formatul vechi
+    return { recoveries: recuperariFolosite, [String(baza.year)]: ramase }
+  }
+
+  const contracteDeducere = {}
+  for (const c of active) {
+    const sold = calculateBalance(employee, otherApproved, recoveries, asOf, c)
+    const split = computeDefaultSplit(ramase, { recoveries: 0, y2: sold.y2, y1: sold.y1, y: sold.y })
+    contracteDeducere[c.id] = {
+      [String(sold.yearY2)]: split.y2 || 0,
+      [String(sold.yearY1)]: split.y1 || 0,
+      [String(sold.year)]: split.y || 0,
+    }
+  }
+  return { recoveries: recuperariFolosite, contracte: contracteDeducere }
+}
+
+/** Zilele scăzute dintr-un contract, pe ani — pentru afișare/editare. */
+export function aniDinDeduction(deduction, contractId, principalId) {
+  return aniScazutiDinContract(deduction, contractId, principalId)
 }
 
 function round1(n) {

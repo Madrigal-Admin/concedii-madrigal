@@ -137,7 +137,7 @@ export function gradatieDupaAni(ani) {
 
 /**
  * Calculează vechimea completă a unui angajat.
- * angajat = rând din `angajati`, cu hr_profil_angajat(*) și
+ * angajat = rând din `angajati`, cu hr_contracte(*) și
  * hr_vechime_anterioara(*) incluse (join).
  * leaveRequestsFaraPlata = cererile de tip "Fără Plată", aprobate, ale
  * acestui angajat (start_date, end_date).
@@ -165,21 +165,36 @@ export function calculateVechime(angajat, leaveRequestsFaraPlata) {
     }
   }
 
-  const profil = Array.isArray(angajat.hr_profil_angajat)
-    ? angajat.hr_profil_angajat[0]
-    : angajat.hr_profil_angajat
+  // Perioadele la Madrigal = UNIUNEA contractelor (suprapunerile nu se
+  // adună de două ori: doi ani cu două contracte în paralel = doi ani).
+  const azi = new Date().toISOString().slice(0, 10)
+  const contracte = Array.isArray(angajat.hr_contracte) ? angajat.hr_contracte : []
+  const intervale = contracte
+    .filter((c) => c.data_inceput_contract)
+    .map((c) => ({
+      inceput: c.data_inceput_contract,
+      // Contract încheiat deja → vechimea se oprește acolo, nu "până azi".
+      final: c.data_final_contract && c.data_final_contract < azi ? c.data_final_contract : azi,
+    }))
+    .filter((i) => i.final >= i.inceput)
+    .sort((a, b) => a.inceput.localeCompare(b.inceput))
 
-  if (profil?.data_inceput_contract) {
-    const azi = new Date().toISOString().slice(0, 10)
-    // Dacă contractul (determinat) s-a încheiat deja, vechimea la Madrigal
-    // se oprește acolo, nu continuă "până azi".
-    const final =
-      profil.data_final_contract && profil.data_final_contract < azi ? profil.data_final_contract : azi
-    const ymd = diffYMD(profil.data_inceput_contract, final)
+  const unite = []
+  for (const i of intervale) {
+    const ultim = unite[unite.length - 1]
+    if (ultim && i.inceput <= ultim.final) {
+      if (i.final > ultim.final) ultim.final = i.final
+    } else {
+      unite.push({ ...i })
+    }
+  }
+
+  for (const i of unite) {
+    const ymd = diffYMD(i.inceput, i.final)
     surse.push({
       tip: 'institutie',
       label: 'Corul Madrigal',
-      metoda: `${profil.data_inceput_contract} → ${final === azi ? `azi (${azi})` : final}`,
+      metoda: `${i.inceput} → ${i.final === azi ? `azi (${azi})` : i.final}`,
       ymd,
     })
     totalCalendaristic = addYMD(totalCalendaristic, ymd)

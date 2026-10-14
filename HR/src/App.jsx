@@ -49,7 +49,7 @@ export default function App() {
     // la înregistrare) — nu mai există pasul de "leagă contul prin email".
     const { data: angajatRow } = await supabase
       .from('angajati')
-      .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*)')
+      .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name))')
       .eq('user_id', uid)
       .maybeSingle()
 

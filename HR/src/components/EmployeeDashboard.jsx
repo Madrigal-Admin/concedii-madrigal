@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import {
-  calculateBalance,
+  calculateBalances,
+  etichetaContract,
   formatDate,
   STATUS_LABELS_EMPLOYEE,
   STATUS_STYLES,
@@ -43,18 +44,22 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   const approved = requests.filter((r) => r.status === 'approved')
-  const balance = calculateBalance(employee, approved, recoveries)
+  const balances = calculateBalances(employee, approved, recoveries)
+  const balance = balances[0]
+  const multiple = balances.length > 1
 
-  const cards = [
-    { label: 'Recuperări', value: balance.recoveries, sub: 'ore suplimentare' },
+  const cardsPentru = (b, cuRecuperari) => [
+    ...(cuRecuperari ? [{ label: 'Recuperări', value: b.recoveries, sub: 'ore suplimentare' }] : []),
     {
-      label: `${balance.yearY2}`,
-      value: balance.y2,
-      sub: balance.y2Expired ? 'expirate la 30 iunie' : 'expiră 30 iunie',
+      label: `${b.yearY2}`,
+      value: b.y2,
+      sub: b.y2Expired ? 'expirate la 30 iunie' : 'expiră 30 iunie',
     },
-    { label: `${balance.yearY1}`, value: balance.y1, sub: 'reportate anul trecut' },
-    { label: `${balance.year} (curent)`, value: balance.y, sub: 'alocarea anului curent' },
+    { label: `${b.yearY1}`, value: b.y1, sub: 'reportate anul trecut' },
+    { label: `${b.year} (curent)`, value: b.y, sub: 'alocarea anului curent' },
   ]
+  const cards = cardsPentru(balance, true)
+  const subtotalAni = (b) => Math.round((b.y2 + b.y1 + b.y) * 10) / 10
 
   const combinedRequests = [
     ...requests.map((r) => ({ ...r, kind: 'leave' })),
@@ -70,24 +75,65 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
         {employee.department?.name} {employee.position?.name ? `· ${employee.position.name}` : ''}
       </p>
 
-      <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
-        <p className="text-sm font-medium text-brand-800">Sold total disponibil</p>
-        <p className={`font-display text-4xl font-semibold ${balance.total < 0 ? 'text-rose-600' : 'text-brand-900'}`}>
-          {balance.total} zile
-        </p>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{c.label}</p>
-            <p className={`font-display text-2xl font-semibold ${c.value < 0 ? 'text-rose-600' : 'text-ink'}`}>
-              {c.value}
+      {!multiple && (
+        <>
+          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+            <p className="text-sm font-medium text-brand-800">Sold total disponibil</p>
+            <p className={`font-display text-4xl font-semibold ${balance.total < 0 ? 'text-rose-600' : 'text-brand-900'}`}>
+              {balance.total} zile
             </p>
-            <p className="text-xs text-slate-400">{c.sub}</p>
           </div>
-        ))}
-      </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {cards.map((c) => (
+              <div key={c.label} className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{c.label}</p>
+                <p className={`font-display text-2xl font-semibold ${c.value < 0 ? 'text-rose-600' : 'text-ink'}`}>
+                  {c.value}
+                </p>
+                <p className="text-xs text-slate-400">{c.sub}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {multiple && (
+        <>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Recuperări</p>
+            <p className={`font-display text-2xl font-semibold ${balance.recoveries < 0 ? 'text-rose-600' : 'text-ink'}`}>
+              {balance.recoveries}
+            </p>
+            <p className="text-xs text-slate-400">ore suplimentare — se scad o singură dată, indiferent de contract</p>
+          </div>
+
+          {balances.map((b, idx) => (
+            <div key={b.contract?.id || idx} className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm font-semibold text-brand-900">{etichetaContract(b.contract, idx)}</p>
+                <p className={`font-display text-2xl font-semibold ${subtotalAni(b) < 0 ? 'text-rose-600' : 'text-brand-900'}`}>
+                  {subtotalAni(b)} zile
+                </p>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {cardsPentru(b, false).map((c) => (
+                  <div key={c.label} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{c.label}</p>
+                    <p className={`font-display text-xl font-semibold ${c.value < 0 ? 'text-rose-600' : 'text-ink'}`}>
+                      {c.value}
+                    </p>
+                    <p className="text-xs text-slate-400">{c.sub}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="mt-2 text-xs text-slate-500">
+            O cerere de concediu se scade din fiecare contract în vigoare în perioada respectivă.
+          </p>
+        </>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-3">
         <button

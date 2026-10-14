@@ -25,7 +25,7 @@ export default function RecoveriesTab() {
     const [{ data: emps }, { data: recs }, { data: requests }] = await Promise.all([
       supabase
         .from('angajati')
-        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*)')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name))')
         .order('nume_complet'),
       supabase.from('overtime_recoveries').select('*, angajati(nume_complet)').order('created_at', { ascending: false }),
       supabase.from('leave_requests').select('*').eq('status', 'approved'),
