@@ -58,10 +58,18 @@ export async function syncClickup({ SUPABASE_URL, SERVICE_KEY, CLICKUP_TOKEN }) 
 
     const bileteNume = valoareDropdown(detail, FIELD_BILETE)
 
+    // Perioada: ClickUp are "start date" și "due date". Începutul = start date
+    // (dacă există, altfel due date); sfârșitul = due date (dacă există,
+    // altfel start date). Un eveniment cu o singură dată are început = sfârșit.
+    const ziIso = (ms) => (ms ? new Date(Number(ms)).toISOString().slice(0, 10) : null)
+    const inceput = ziIso(task.start_date)
+    const sfarsit = ziIso(task.due_date)
+
     return {
       clickup_task_id: task.id,
       nume: task.name,
-      data: task.due_date ? new Date(Number(task.due_date)).toISOString().slice(0, 10) : null,
+      data: inceput || sfarsit,
+      data_sfarsit: sfarsit || inceput,
       status: task.status?.status || task.status,
       locatie: fieldValue(FIELD_LOCATIE) || null,
       responsabil: fieldValue(FIELD_ORGANIZATOR) || task.assignees?.[0]?.username || null,
@@ -133,7 +141,21 @@ export async function syncClickup({ SUPABASE_URL, SERVICE_KEY, CLICKUP_TOKEN }) 
           { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
         )
         const invitatiiLegate = invRes.ok ? await invRes.json() : []
-        if (invitatiiLegate.length === 0) {
+        // Evenimentele cu raport post-eveniment nu se șterg niciodată.
+        const raportRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/rap_postev?eveniment_id=eq.${orfan.id}&select=id&limit=1`,
+          { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+        )
+        // Dacă nu putem verifica (ex. migrarea Rapoarte nu e rulată încă și
+        // tabela nu există), 404 înseamnă "nu există rapoarte" doar când
+        // tabela lipsește; orice altă eroare = prudență, nu ștergem.
+        let raportLegat = false
+        if (raportRes.ok) {
+          raportLegat = (await raportRes.json()).length > 0
+        } else if (raportRes.status !== 404) {
+          raportLegat = true
+        }
+        if (invitatiiLegate.length === 0 && !raportLegat) {
           await fetch(`${SUPABASE_URL}/rest/v1/evenimente?id=eq.${orfan.id}`, {
             method: 'DELETE',
             headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },

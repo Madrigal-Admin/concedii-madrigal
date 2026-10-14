@@ -337,6 +337,7 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
                             <p className="text-sm font-medium text-slate-800 truncate">{e.nume}</p>
                             <p className="text-xs text-slate-500 mt-0.5">
                               {formatData(e.data)}
+                              {e.data_sfarsit && e.data_sfarsit !== e.data ? ` – ${formatData(e.data_sfarsit)}` : ''}
                               {e.locatie ? ` · ${e.locatie}` : ''}
                             </p>
                           </div>

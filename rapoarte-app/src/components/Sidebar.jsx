@@ -4,7 +4,8 @@ export const SECTIUNI = [
   { grup: 'Rapoarte de activitate', key: 'verificare', label: 'De verificat', roles: ['admin_activitate', 'admin_general'] },
   { grup: 'Rapoarte de activitate', key: 'nedepuse', label: 'Cine nu a depus', roles: ['admin_activitate', 'admin_general'] },
   { grup: 'Rapoarte de activitate', key: 'persoane', label: 'Persoane și contracte', roles: ['admin_activitate', 'admin_general'] },
-  { grup: 'Rapoarte post-eveniment', key: 'postev', label: 'Rapoarte post-eveniment', roles: ['angajat', 'admin_postev', 'admin_general'] },
+  { grup: 'Rapoarte post-eveniment', key: 'postev', label: 'Rapoartele mele', roles: ['angajat', 'admin_postev', 'admin_general'] },
+  { grup: 'Rapoarte post-eveniment', key: 'postev-admin', label: 'De verificat', roles: ['admin_postev', 'admin_general'] },
   { grup: 'Rapoarte post-eveniment', key: 'dashboard', label: 'Dashboard', roles: ['admin_postev', 'vizualizare', 'admin_general'] },
   { grup: 'Administrare', key: 'structura', label: 'Structura rapoartelor', roles: ['admin_general'] },
 ]

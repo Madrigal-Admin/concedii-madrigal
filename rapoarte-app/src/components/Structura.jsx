@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { formatDataOra } from '../lib/luni'
 import { MARKERI_DE_BAZA, arrayBufferToBase64, citesteMarkeri, verificaMarkeri } from '../lib/sablon'
 import { inputCls, labelCls, btnPrimary, btnGhost, cardCls } from '../lib/ui'
+import StructuraPostev from './StructuraPostev'
 
 const TIPURI = [
   { v: 'text', l: 'Text scurt' },
@@ -20,9 +21,9 @@ export default function Structura() {
   const [tab, setTab] = useState('sablon')
   return (
     <div className="space-y-4">
-      <h2 className="font-display text-lg font-semibold text-slate-800">Structura rapoartelor de activitate</h2>
+      <h2 className="font-display text-lg font-semibold text-slate-800">Structura rapoartelor</h2>
       <div className="flex gap-1 border-b border-slate-200">
-        {[['sablon', 'Șablon Word'], ['campuri', 'Câmpuri suplimentare']].map(([k, l]) => (
+        {[['sablon', 'Șablon Word'], ['campuri', 'Câmpuri suplimentare'], ['postev', 'Post-eveniment: tipuri și câmpuri']].map(([k, l]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -34,7 +35,9 @@ export default function Structura() {
           </button>
         ))}
       </div>
-      {tab === 'sablon' ? <Sablon /> : <Campuri />}
+      {tab === 'sablon' && <Sablon />}
+      {tab === 'campuri' && <Campuri />}
+      {tab === 'postev' && <StructuraPostev />}
     </div>
   )
 }
