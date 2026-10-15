@@ -11,9 +11,16 @@ import Structura from './components/Structura'
 import PostevMele from './components/PostevMele'
 import PostevAdmin from './components/PostevAdmin'
 import Dashboard from './components/Dashboard'
+import ExternPage from './components/ExternPage'
 import { ROLE_LABELS } from './lib/roluri'
 
+// Pagina publică pentru colaboratori externi (fără cont): .../rapoarte/?extern=1
 export default function App() {
+  if (new URLSearchParams(window.location.search).has('extern')) return <ExternPage />
+  return <AppIntern />
+}
+
+function AppIntern() {
   const [session, setSession] = useState(undefined)
   const [role, setRole] = useState(null) // null = încă se verifică, 'none' = fără acces
   const [angajat, setAngajat] = useState(null)

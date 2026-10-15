@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, UserPlus, Users, Pencil } from 'lucide-react'
+import { Plus, UserPlus, Users, Pencil, Link as LinkIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { formatData } from '../lib/luni'
 import { inputCls, labelCls, btnPrimary, btnGhost, cardCls } from '../lib/ui'
@@ -21,6 +21,7 @@ export default function PersoaneContracte() {
   const [contractEditat, setContractEditat] = useState(null) // { persoana, form, id? }
   const [hrContracte, setHrContracte] = useState([])
   const [msg, setMsg] = useState('')
+  const [linkCopiat, setLinkCopiat] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -39,6 +40,17 @@ export default function PersoaneContracte() {
     setContracte(c || [])
     setAngajati(a || [])
     setLoading(false)
+  }
+
+  async function copiazaLinkExtern() {
+    const link = `${window.location.origin}/rapoarte/?extern=1`
+    try {
+      await navigator.clipboard.writeText(link)
+      setLinkCopiat(true)
+      setTimeout(() => setLinkCopiat(false), 2000)
+    } catch {
+      window.prompt('Copiază linkul:', link)
+    }
   }
 
   const angajatiLibere = angajati.filter((a) => !persoane.some((p) => p.angajat_id === a.id))
@@ -232,6 +244,9 @@ export default function PersoaneContracte() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-semibold text-slate-800">Persoane și contracte</h2>
         <div className="flex flex-wrap gap-2">
+          <button onClick={copiazaLinkExtern} className={btnGhost} title="Link public pentru colaboratorii fără cont în Hub">
+            <LinkIcon size={14} /> {linkCopiat ? 'Link copiat!' : 'Copiază link colaboratori externi'}
+          </button>
           <button onClick={() => setAdauga(adauga === 'angajat' ? null : 'angajat')} className={btnGhost}>
             <UserPlus size={14} /> Angajat din Hub
           </button>
