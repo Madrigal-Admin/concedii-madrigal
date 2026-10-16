@@ -31,6 +31,12 @@ const TOOLS = [
     description: 'Rapoarte de activitate lunare și rapoarte post-eveniment.',
     href: '/rapoarte/',
   },
+  {
+    tool: 'financiar',
+    name: 'Financiar',
+    description: 'Referate de necesitate și deconturi de cheltuieli.',
+    href: '/financiar/',
+  },
 ]
 
 export default function Dashboard({ angajat, accesTooluri, isHubAdmin, onOpenAdmin, onOpenCalendar, onSignOut }) {

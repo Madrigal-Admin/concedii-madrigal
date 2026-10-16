@@ -13,6 +13,7 @@ const TOOLS = [
     label: 'Rapoarte',
     roles: ['angajat', 'admin_activitate', 'admin_postev', 'vizualizare', 'admin_general'],
   },
+  { key: 'financiar', label: 'Financiar', roles: ['angajat', 'admin_financiar'] },
 ]
 
 const ROLE_LABELS = {
@@ -25,6 +26,7 @@ const ROLE_LABELS = {
   admin_postev: 'Admin Rapoarte post-eveniment',
   vizualizare: 'Vizualizare dashboard',
   admin_general: 'Admin general Rapoarte',
+  admin_financiar: 'Admin Financiar',
 }
 
 export default function AdminAccesTooluri() {
