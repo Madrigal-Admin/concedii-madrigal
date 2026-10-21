@@ -33,13 +33,11 @@ export default function Auth() {
     const cleanEmail = email.trim()
 
     // 1. Verificăm dacă emailul există în angajati (adăugat de admin)
-    const { data: angajat, error: lookupError } = await supabase
-      .from('angajati')
-      .select('id, user_id')
-      .eq('email', cleanEmail)
-      .maybeSingle()
+    const { data: stare, error: lookupError } = await supabase.rpc('hub_stare_email', {
+      p_email: cleanEmail,
+    })
 
-    if (lookupError || !angajat) {
+    if (lookupError || stare === 'nu_exista') {
       setLoading(false)
       setError(
         'Acest email nu a fost găsit în lista de angajați. Contactează adminul.'
@@ -47,7 +45,7 @@ export default function Auth() {
       return
     }
 
-    if (angajat.user_id) {
+    if (stare === 'are_cont') {
       setLoading(false)
       setError('Există deja un cont pentru acest email. Folosește "Am cont".')
       return

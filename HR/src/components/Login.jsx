@@ -28,11 +28,9 @@ export default function Login() {
 
     // Contul de angajat poate fi creat DOAR dacă emailul există deja
     // în lista de angajați introdusă de Admin.
-    const { data: match } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('email', email.trim().toLowerCase())
-      .maybeSingle()
+    const { data: match } = await supabase.rpc('hr_email_in_lista', {
+      p_email: email.trim().toLowerCase(),
+    })
 
     if (!match) {
       setLoading(false)
