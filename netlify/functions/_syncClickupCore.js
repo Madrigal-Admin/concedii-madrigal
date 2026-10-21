@@ -61,15 +61,30 @@ export async function syncClickup({ SUPABASE_URL, SERVICE_KEY, CLICKUP_TOKEN }) 
     // Perioada: ClickUp are "start date" și "due date". Începutul = start date
     // (dacă există, altfel due date); sfârșitul = due date (dacă există,
     // altfel start date). Un eveniment cu o singură dată are început = sfârșit.
-    const ziIso = (ms) => (ms ? new Date(Number(ms)).toISOString().slice(0, 10) : null)
-    const inceput = ziIso(task.start_date)
-    const sfarsit = ziIso(task.due_date)
+    // ClickUp păstrează fiecare dată ca moment în timp. O dată FĂRĂ oră e
+    // salvată automat la 04:00 (ora României); orice altă oră înseamnă că
+    // ai setat-o tu. Convertim totul în ora României, ca ziua să nu se
+    // mute și ca ora să apară așa cum o vezi în ClickUp.
+    const partiRo = (ms) => {
+      if (!ms) return null
+      const t = new Date(Number(ms)).toLocaleString('sv-SE', { timeZone: 'Europe/Bucharest' })
+      return { zi: t.slice(0, 10), ora: t.slice(11, 16) }
+    }
+    const oraSetata = (p) => (p && p.ora !== '04:00' ? p.ora : null)
+    const pStart = partiRo(task.start_date)
+    const pDue = partiRo(task.due_date)
+    const inceput = (pStart || pDue)?.zi || null
+    const sfarsit = (pDue || pStart)?.zi || null
+    const oraInceput = oraSetata(pStart || pDue)
+    const oraSfarsit = pStart && pDue ? oraSetata(pDue) : null
 
     return {
       clickup_task_id: task.id,
       nume: task.name,
       data: inceput || sfarsit,
       data_sfarsit: sfarsit || inceput,
+      ora_inceput: oraInceput,
+      ora_sfarsit: oraSfarsit,
       status: task.status?.status || task.status,
       locatie: fieldValue(FIELD_LOCATIE) || null,
       responsabil: fieldValue(FIELD_ORGANIZATOR) || task.assignees?.[0]?.username || null,

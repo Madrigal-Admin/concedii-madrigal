@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, X, Eye, RotateCcw, Pencil } from 'lucide-react'
+import { Check, X, Eye, RotateCcw, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { STARI } from '../lib/roluri'
 import { LUNI } from '../lib/luni'
@@ -10,7 +10,10 @@ import PostevForm from './PostevForm'
 
 const LIMITA = 300
 
-export default function PostevAdmin({ angajat }) {
+export default function PostevAdmin({ angajat, role }) {
+  const esteGeneral = role === 'admin_general'
+  const [deSters, setDeSters] = useState(null)
+  const [seSterge, setSeSterge] = useState(false)
   const cfg = usePostevConfig()
   const [rapoarte, setRapoarte] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +36,16 @@ export default function PostevAdmin({ angajat }) {
     const { data } = await supabase.from('rap_postev').select('*').order('data_inceput', { ascending: false }).limit(LIMITA)
     setRapoarte(data || [])
     setLoading(false)
+  }
+
+  async function stergeRaport() {
+    setError('')
+    setSeSterge(true)
+    const { error: err } = await supabase.rpc('rap_postev_sterge', { p_raport: deSters.id })
+    setSeSterge(false)
+    if (err) return setError(err.message || 'Nu am putut șterge raportul.')
+    setDeSters(null)
+    load()
   }
 
   async function schimbaStarea(id, stare, motivText) {
@@ -137,9 +150,26 @@ export default function PostevAdmin({ angajat }) {
                 {r.stare !== 'aprobat' && (
                   <button onClick={() => setEditat(r)} className={btnGhost}><Pencil size={14} /> Editează</button>
                 )}
+                {esteGeneral && (
+                  <button onClick={() => setDeSters(r)} className={btnDanger}><Trash2 size={14} /> Șterge</button>
+                )}
               </>
             }
           />
+          {deSters?.id === r.id && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <p>
+                Ștergi definitiv raportul pentru <strong>{r.eveniment_nume || 'evenimentul ales manual'}</strong>? Cifrele lui
+                dispar din Dashboard, iar acțiunea nu poate fi anulată.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button disabled={seSterge} onClick={stergeRaport} className={btnDanger}>
+                  {seSterge ? 'Se șterge…' : 'Da, șterge definitiv'}
+                </button>
+                <button onClick={() => setDeSters(null)} className={btnGhost}>Renunță</button>
+              </div>
+            </div>
+          )}
           {motivPentru?.id === r.id && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <label className={labelCls}>

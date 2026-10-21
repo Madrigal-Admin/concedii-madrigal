@@ -68,6 +68,7 @@ function formatValoare(key, value, attributions) {
 
 export default function EmployeesTab() {
   const [angajati, setAngajati] = useState([])
+  const [sortDesc, setSortDesc] = useState(false)
   const [attributions, setAttributions] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
@@ -152,8 +153,19 @@ export default function EmployeesTab() {
       {loading ? (
         <p className="text-sm text-slate-500">Se încarcă…</p>
       ) : (
+        <>
+        <div className="mb-2 flex items-center gap-2 text-xs text-slate-500">
+          <button
+            onClick={() => setSortDesc((d) => !d)}
+            className="rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-200 focus-ring"
+          >
+            Sortare după nume: {sortDesc ? 'Z → A' : 'A → Z'}
+          </button>
+        </div>
         <div className="max-h-[520px] space-y-2 overflow-y-auto">
-          {angajati.map((a) => (
+          {[...angajati]
+            .sort((x, y) => (x.nume_complet || '').localeCompare(y.nume_complet || '', 'ro') * (sortDesc ? -1 : 1))
+            .map((a) => (
             <div
               key={a.id}
               className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3"
@@ -176,6 +188,7 @@ export default function EmployeesTab() {
           ))}
           {angajati.length === 0 && <p className="text-sm text-slate-400">Niciun angajat activ găsit.</p>}
         </div>
+        </>
       )}
 
       {editingAngajat && (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import FiltruAngajati, { FILTRU_GOL, potrivesteFiltru } from './FiltruAngajati'
 import { supabase } from '../supabaseClient'
 
 const EMPTY_FORM = {
@@ -13,6 +14,7 @@ export default function AdminAngajati() {
   const [angajati, setAngajati] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
+  const [filtru, setFiltru] = useState(FILTRU_GOL)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -198,6 +200,15 @@ export default function AdminAngajati() {
       {loading ? (
         <p className="text-sm text-slate-500">Se încarcă...</p>
       ) : (
+        <>
+        <FiltruAngajati
+          value={filtru}
+          onChange={setFiltru}
+          departments={departments}
+          positions={positions}
+          total={angajati.length}
+          afisati={angajati.filter((a) => potrivesteFiltru(a, filtru)).length}
+        />
         <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-slate-50 text-slate-500 text-left">
@@ -211,7 +222,7 @@ export default function AdminAngajati() {
               </tr>
             </thead>
             <tbody>
-              {angajati.map((a) => (
+              {angajati.filter((a) => potrivesteFiltru(a, filtru)).map((a) => (
                 <tr key={a.id} className="border-t border-slate-100">
                   <td className="px-4 py-3 text-slate-800">{a.nume_complet}</td>
                   <td className="px-4 py-3 text-slate-500">{a.email}</td>
@@ -251,6 +262,7 @@ export default function AdminAngajati() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )

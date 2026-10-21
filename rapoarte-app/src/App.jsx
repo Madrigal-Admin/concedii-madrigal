@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
 import Sidebar, { sectiuniPermise } from './components/Sidebar'
@@ -96,13 +95,6 @@ function AppIntern() {
         <Sidebar view={view} onSelect={setView} role={role} />
 
         <main className="min-w-0 flex-1 p-6 md:p-8">
-          <a
-            href="/"
-            className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus-ring"
-          >
-            <ArrowLeft size={15} />
-            Înapoi la Hub
-          </a>
 
           <div className="mx-auto max-w-5xl">
             {view === 'mele' && <RapoarteleMele angajat={angajat} role={role} />}
@@ -111,7 +103,7 @@ function AppIntern() {
             {view === 'persoane' && <PersoaneContracte />}
             {view === 'structura' && <Structura />}
             {view === 'postev' && <PostevMele angajat={angajat} role={role} />}
-            {view === 'postev-admin' && <PostevAdmin angajat={angajat} />}
+            {view === 'postev-admin' && <PostevAdmin angajat={angajat} role={role} />}
             {view === 'dashboard' && <Dashboard />}
           </div>
         </main>

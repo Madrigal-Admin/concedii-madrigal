@@ -1,13 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LogOut, RefreshCw, ChevronLeft, ChevronRight, ArrowLeft, Settings, X as XIcon } from 'lucide-react'
+import { LogOut, RefreshCw, ChevronLeft, ChevronRight, Settings, X as XIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
+// Culorile sunt cele din ClickUp (c = culoarea din ClickUp, text = variantă mai
+// închisă, ca să se citească bine pe fundalul deschis).
 const STATUS_LABELS = {
-  deschis: { label: 'Deschis', className: 'bg-slate-100 text-slate-600' },
-  'in organizare': { label: 'În organizare', className: 'bg-amber-50 text-amber-700' },
-  finalizat: { label: 'Finalizat', className: 'bg-emerald-50 text-emerald-700' },
+  deschis: { label: 'Deschis', c: '#87909e', text: '#5b6573' },
+  'in organizare': { label: 'În organizare', c: '#f76808', text: '#c2570a' },
+  anulat: { label: 'Anulat', c: '#e5484d', text: '#c4262b' },
+  finalizat: { label: 'Finalizat', c: '#008844', text: '#006b35' },
+}
+const IMPLICARE_CULORI = {
+  Organizator: { c: '#f76808', text: '#c2570a' },
+  Partener: { c: '#ffc53d', text: '#8a6200' },
+  Invitat: { c: '#30a46c', text: '#1f7a52' },
+}
+
+function Chip({ c, text, children }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
+      style={{ backgroundColor: `${c}26`, color: text }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c }} />
+      {children}
+    </span>
+  )
+}
+
+// "19:00" sau "19:00–21:00"; nimic dacă n-ai setat ora în ClickUp.
+function formatOra(e) {
+  if (!e.ora_inceput) return ''
+  return e.ora_sfarsit && e.ora_sfarsit !== e.ora_inceput ? `${e.ora_inceput}–${e.ora_sfarsit}` : e.ora_inceput
 }
 
 const ZILE_SAPT = ['Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm', 'Dum']
@@ -182,6 +208,7 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
+        onBack={onBack}
         title="Calendar Evenimente"
         right={
           <div className="flex items-center gap-2">
@@ -200,18 +227,6 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
       />
 
       <main className="flex-1 max-w-6xl mx-auto px-6 py-8 w-full">
-        <a
-          href="/"
-          onClick={(e) => {
-            e.preventDefault()
-            onBack()
-          }}
-          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
-        >
-          <ArrowLeft size={15} />
-          Înapoi la Hub
-        </a>
-
         {canManageCalendar && (
           <div className="mb-5 flex flex-wrap items-center gap-3 bg-white rounded-xl shadow-sm p-4">
             <button
@@ -356,7 +371,9 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
               ) : (
                 <div className="space-y-2">
                   {evenimenteAfisate.map((e) => {
-                    const status = STATUS_LABELS[e.status] || { label: e.status || '—', className: 'bg-slate-100 text-slate-600' }
+                    const status = STATUS_LABELS[e.status] || { label: e.status || '—', c: '#87909e', text: '#5b6573' }
+                    const impl = e.implicare ? IMPLICARE_CULORI[e.implicare] || { c: '#87909e', text: '#5b6573' } : null
+                    const ora = formatOra(e)
                     return (
                       <div key={e.id} className="rounded-xl border border-slate-100 p-3">
                         <div className="flex items-start justify-between gap-2">
@@ -365,13 +382,17 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
                             <p className="text-xs text-slate-500 mt-0.5">
                               {formatData(e.data)}
                               {e.data_sfarsit && e.data_sfarsit !== e.data ? ` – ${formatData(e.data_sfarsit)}` : ''}
+                              {ora ? ` · ${ora}` : ''}
                               {e.locatie ? ` · ${e.locatie}` : ''}
                             </p>
                           </div>
-                          <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full ${status.className}`}>{status.label}</span>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <Chip c={status.c} text={status.text}>{status.label}</Chip>
+                            {impl && <Chip c={impl.c} text={impl.text}>{e.implicare}</Chip>}
+                          </div>
                         </div>
 
-                        {(e.tags?.length > 0 || e.implicare) && (
+                        {e.tags?.length > 0 && (
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             {e.tags?.map((tag) => (
                               <span
@@ -382,11 +403,6 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
                                 {tag}
                               </span>
                             ))}
-                            {e.implicare && (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                                {e.implicare}
-                              </span>
-                            )}
                           </div>
                         )}
 

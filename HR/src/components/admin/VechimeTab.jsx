@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { calculateVechime, formatYMD } from '../../lib/vechimeCalculations'
@@ -7,6 +7,7 @@ export default function VechimeTab() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
+  const [sortare, setSortare] = useState({ key: 'nume', dir: 'asc' })
 
   useEffect(() => {
     load()
@@ -43,6 +44,28 @@ export default function VechimeTab() {
     setLoading(false)
   }
 
+  const rowsSortate = useMemo(() => {
+    const valoare = ({ angajat, rezultat }) =>
+      sortare.key === 'vechime'
+        ? rezultat.total.years * 365 + rezultat.total.months * 30 + rezultat.total.days
+        : sortare.key === 'gradatie'
+          ? rezultat.gradatie
+          : null
+    const copie = [...rows]
+    copie.sort((a, b) => {
+      let r
+      if (sortare.key === 'nume') r = (a.angajat.nume_complet || '').localeCompare(b.angajat.nume_complet || '', 'ro')
+      else r = valoare(a) - valoare(b)
+      return sortare.dir === 'asc' ? r : -r
+    })
+    return copie
+  }, [rows, sortare])
+
+  function sorteaza(key) {
+    setSortare((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
+  const sageata = (key) => (sortare.key === key ? (sortare.dir === 'asc' ? ' ▲' : ' ▼') : '')
+
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   return (
@@ -57,13 +80,13 @@ export default function VechimeTab() {
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium"></th>
-              <th className="px-4 py-3 font-medium">Angajat</th>
-              <th className="px-4 py-3 font-medium">Vechime totală</th>
-              <th className="px-4 py-3 font-medium">Gradație</th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('nume')}>Angajat{sageata('nume')}</th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('vechime')}>Vechime totală{sageata('vechime')}</th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('gradatie')}>Gradație{sageata('gradatie')}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ angajat, rezultat }) => {
+            {rowsSortate.map(({ angajat, rezultat }) => {
               const isOpen = expandedId === angajat.id
               return (
                 <>

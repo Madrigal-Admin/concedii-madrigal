@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ArrowLeft } from 'lucide-react'
+import { LogOut, ChevronDown, ChevronRight } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
@@ -9,22 +9,38 @@ import AdminGhidAcordeon from './AdminGhidAcordeon'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
 
-const SECTIONS = [
-  { key: 'angajati', label: 'Angajați' },
-  { key: 'acces', label: 'Acces Tool-uri' },
-  { key: 'departamente', label: 'Departamente & Funcții' },
-  { key: 'ghid-despre', label: 'Ghid: Despre Madrigal' },
-  { key: 'ghid-echipa', label: 'Ghid: Echipa' },
-  { key: 'ghid-info-utile', label: 'Ghid: Informații utile' },
-  { key: 'ghid-info-ru', label: 'Ghid: Resurse Umane' },
+// Meniul din stânga: o intrare simplă sau un grup care se deschide/închide.
+const MENU = [
+  { key: 'acces', label: 'Acces Tool-uri', bold: true },
+  {
+    grup: 'resurse-umane',
+    label: 'Resurse Umane',
+    items: [
+      { key: 'angajati', label: 'Angajați' },
+      { key: 'departamente', label: 'Departamente & Funcții' },
+    ],
+  },
+  {
+    grup: 'ghid',
+    label: 'Editează Ghidul Angajatului',
+    items: [
+      { key: 'ghid-despre', label: 'Despre Madrigal' },
+      { key: 'ghid-echipa', label: 'Echipa' },
+      { key: 'ghid-info-utile', label: 'Informații utile' },
+      { key: 'ghid-info-ru', label: 'Resurse Umane' },
+    ],
+  },
 ]
 
 export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
-  const [active, setActive] = useState('angajati')
+  const [active, setActive] = useState('acces')
+  const [deschise, setDeschise] = useState({ 'resurse-umane': false, ghid: false })
+  const toggle = (g) => setDeschise((d) => ({ ...d, [g]: !d[g] }))
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
+        onBack={onBackToDashboard}
         title="Administrare Hub"
         right={
           <div className="flex items-center gap-2">
@@ -47,30 +63,54 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <aside className="md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex-shrink-0">
           <nav className="flex md:flex-col overflow-x-auto p-2 gap-1">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setActive(s.key)}
-                className={`text-left text-sm px-3 py-2 rounded-lg transition whitespace-nowrap ${
-                  active === s.key
-                    ? 'bg-accent/10 text-accent font-medium'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
+            {MENU.map((m) => {
+              if (!m.grup) {
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => setActive(m.key)}
+                    className={`text-left text-sm px-3 py-2 rounded-lg transition whitespace-nowrap font-semibold ${
+                      active === m.key ? 'bg-accent/10 text-accent' : 'text-slate-800 hover:bg-slate-100'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                )
+              }
+              const contineActiv = m.items.some((i) => i.key === active)
+              const deschis = deschise[m.grup] || contineActiv
+              return (
+                <div key={m.grup} className="md:flex-col flex md:block gap-1">
+                  <button
+                    onClick={() => toggle(m.grup)}
+                    className={`flex w-full items-center justify-between gap-2 text-left text-sm px-3 py-2 rounded-lg transition whitespace-nowrap font-medium ${
+                      contineActiv ? 'text-accent' : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {m.label}
+                    {deschis ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                  {deschis &&
+                    m.items.map((i) => (
+                      <button
+                        key={i.key}
+                        onClick={() => setActive(i.key)}
+                        className={`md:ml-3 text-left text-sm px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
+                          active === i.key
+                            ? 'bg-accent/10 text-accent font-medium'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {i.label}
+                      </button>
+                    ))}
+                </div>
+              )
+            })}
           </nav>
         </aside>
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
-          <button
-            onClick={onBackToDashboard}
-            className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-ring transition"
-          >
-            <ArrowLeft size={15} />
-            Înapoi la Hub
-          </button>
           {active === 'angajati' && <AdminAngajati />}
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}

@@ -132,7 +132,8 @@ function calculeazaRemindere(rows) {
   return remindere.sort((a, b) => a.data.localeCompare(b.data))
 }
 
-export default function OverviewTab() {
+export default function OverviewTab({ onNavigate }) {
+  const [cereri, setCereri] = useState(null) // { solicitate, inAsteptare, adeverinte }
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [coloaneVizibile, setColoaneVizibile] = useState(DEFAULT_COLOANE)
@@ -143,7 +144,19 @@ export default function OverviewTab() {
 
   useEffect(() => {
     load()
+    incarcaCereri()
   }, [])
+
+  // Cererile care așteaptă o acțiune, afișate sus ca să fie văzute imediat.
+  async function incarcaCereri() {
+    const numar = (q) => q.then(({ count }) => count || 0)
+    const [solicitate, inAsteptare, adeverinte] = await Promise.all([
+      numar(supabase.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'submitted')),
+      numar(supabase.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+      numar(supabase.from('certificate_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+    ])
+    setCereri({ solicitate, inAsteptare, adeverinte })
+  }
 
   async function load() {
     setLoading(true)
@@ -246,6 +259,46 @@ export default function OverviewTab() {
           <Bell size={16} className="text-brand-600" />
           <p className="font-display text-sm font-semibold text-ink">Remindere — următoarele 30 de zile</p>
         </div>
+        {cereri && (cereri.solicitate > 0 || cereri.inAsteptare > 0 || cereri.adeverinte > 0) && (
+          <div className="mb-2 space-y-1.5">
+            {cereri.solicitate > 0 && (
+              <button
+                onClick={() => onNavigate?.('approvals')}
+                className="flex w-full items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-left text-xs text-sky-900 hover:bg-sky-100"
+              >
+                <Bell size={13} className="shrink-0" />
+                <span className="font-semibold">
+                  {cereri.solicitate} {cereri.solicitate === 1 ? 'cerere de concediu solicitată' : 'cereri de concediu solicitate'}
+                </span>
+                <span className="text-sky-700">— deschide Aprobări concedii</span>
+              </button>
+            )}
+            {cereri.inAsteptare > 0 && (
+              <button
+                onClick={() => onNavigate?.('approvals')}
+                className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs text-amber-900 hover:bg-amber-100"
+              >
+                <Bell size={13} className="shrink-0" />
+                <span className="font-semibold">
+                  {cereri.inAsteptare} {cereri.inAsteptare === 1 ? 'cerere de concediu în așteptare' : 'cereri de concediu în așteptare'}
+                </span>
+                <span className="text-amber-700">— așteaptă aprobarea ta</span>
+              </button>
+            )}
+            {cereri.adeverinte > 0 && (
+              <button
+                onClick={() => onNavigate?.('certificates')}
+                className="flex w-full items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-left text-xs text-sky-900 hover:bg-sky-100"
+              >
+                <Bell size={13} className="shrink-0" />
+                <span className="font-semibold">
+                  {cereri.adeverinte} {cereri.adeverinte === 1 ? 'cerere de adeverință nouă' : 'cereri de adeverințe noi'}
+                </span>
+                <span className="text-sky-700">— deschide Cereri de adeverințe</span>
+              </button>
+            )}
+          </div>
+        )}
         {remindere.length === 0 ? (
           <p className="text-xs text-slate-400">Niciun eveniment în următoarele 30 de zile.</p>
         ) : (
