@@ -1,14 +1,10 @@
-import { LogOut, ArrowLeft } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 export default function Navbar({ displayName, roleLabel, onLogout }) {
   return (
     <header className="site-header">
       <div className="site-header__inner">
         <div className="site-header__left">
-          <a href="/" className="hub-back" title="Înapoi la Hub">
-            <ArrowLeft size={15} />
-            Hub
-          </a>
           <img src="/assets/logo-madrigal.png" alt="Madrigal" className="site-header__logo" />
         </div>
 

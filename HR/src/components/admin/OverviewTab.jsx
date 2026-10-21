@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, Cake, TrendingUp, IdCard, FileWarning, Columns3, Printer, Download, Save, X as XIcon } from 'lucide-react'
+import { Search, Bell, Cake, TrendingUp, IdCard, FileWarning, Columns3, Printer, Download, Save, X as XIcon } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { calculateBalance, getHrProfil, getContracte } from '../../lib/leaveCalculations'
 import { calculateVechime, parseCnpBirthDate, dataUrmatoareiGradatii } from '../../lib/vechimeCalculations'
@@ -141,6 +141,7 @@ export default function OverviewTab({ onNavigate }) {
   const [sortare, setSortare] = useState({ key: 'nume', dir: 'asc' })
   const [vederi, setVederi] = useState([])
   const [numeVedereNoua, setNumeVedereNoua] = useState('')
+  const [cauta, setCauta] = useState('')
 
   useEffect(() => {
     load()
@@ -187,9 +188,12 @@ export default function OverviewTab({ onNavigate }) {
   const remindere = useMemo(() => calculeazaRemindere(rows), [rows])
 
   const rowsSortate = useMemo(() => {
+    const norm = (t) => (t || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const q = norm(cauta.trim())
+    const vizibile = q ? rows.filter(({ emp }) => norm(emp.nume_complet).includes(q)) : rows
     const col = COLOANE.find((c) => c.key === sortare.key)
-    if (!col) return rows
-    const copy = [...rows]
+    if (!col) return vizibile
+    const copy = [...vizibile]
     copy.sort((a, b) => {
       const va = col.sort(a)
       const vb = col.sort(b)
@@ -198,7 +202,7 @@ export default function OverviewTab({ onNavigate }) {
       return 0
     })
     return copy
-  }, [rows, sortare])
+  }, [rows, sortare, cauta])
 
   function toggleSort(key) {
     setSortare((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
@@ -393,6 +397,15 @@ export default function OverviewTab({ onNavigate }) {
         </div>
       )}
 
+      <div className="no-print relative mb-3">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={cauta}
+          onChange={(e) => setCauta(e.target.value)}
+          placeholder="Caută după nume…"
+          className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus-ring"
+        />
+      </div>
       <div className="overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 bg-white max-h-[700px]">
         <table className="w-full min-w-[820px] text-sm">
           <thead>

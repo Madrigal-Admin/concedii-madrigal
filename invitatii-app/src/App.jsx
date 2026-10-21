@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
@@ -96,6 +97,10 @@ function AdminApp() {
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <Navbar displayName={displayName} roleLabel={null} onLogout={handleLogout} />
         <main className="flex-1 flex items-center justify-center px-4">
+          <a href="/" className="hub-back mb-4">
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </a>
           <div className="mx-auto max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
             Contul tău nu are acces la tool-ul de Invitații. Contactează un administrator din Hub, în
             secțiunea „Acces Tool-uri".
@@ -113,7 +118,7 @@ function AdminApp() {
         <Sidebar view={view} onSelect={setView} role={role} />
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
-          <div className="mx-auto max-w-5xl">
+          <div className="w-full">
             {view === 'evenimente' && <EvenimenteTab role={role} session={session} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
             {view === 'checkin' && <CheckinTab />}

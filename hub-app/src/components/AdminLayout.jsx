@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ChevronDown, ChevronRight } from 'lucide-react'
+import { LogOut, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import AdminAngajati from './AdminAngajati'
 import AdminAccesTooluri from './AdminAccesTooluri'
 import AdminDepartamenteFunctii from './AdminDepartamenteFunctii'
@@ -40,7 +40,6 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
-        onBack={onBackToDashboard}
         title="Administrare Hub"
         right={
           <div className="flex items-center gap-2">
@@ -80,7 +79,7 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
               const contineActiv = m.items.some((i) => i.key === active)
               const deschis = deschise[m.grup] || contineActiv
               return (
-                <div key={m.grup} className="md:flex-col flex md:block gap-1">
+                <div key={m.grup} className="flex flex-col gap-1">
                   <button
                     onClick={() => toggle(m.grup)}
                     className={`flex w-full items-center justify-between gap-2 text-left text-sm px-3 py-2 rounded-lg transition whitespace-nowrap font-medium ${
@@ -111,6 +110,10 @@ export default function AdminLayout({ angajat, onBackToDashboard, onSignOut }) {
         </aside>
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
+          <button type="button" onClick={onBackToDashboard} className="hub-back mb-4">
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </button>
           {active === 'angajati' && <AdminAngajati />}
           {active === 'acces' && <AdminAccesTooluri />}
           {active === 'departamente' && <AdminDepartamenteFunctii />}

@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { calculateVechime, formatYMD } from '../../lib/vechimeCalculations'
+
+
+const norm = (t) => (t || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 export default function VechimeTab() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
-  const [sortare, setSortare] = useState({ key: 'nume', dir: 'asc' })
+  const [cauta, setCauta] = useState('')
 
   useEffect(() => {
     load()
@@ -44,28 +48,6 @@ export default function VechimeTab() {
     setLoading(false)
   }
 
-  const rowsSortate = useMemo(() => {
-    const valoare = ({ angajat, rezultat }) =>
-      sortare.key === 'vechime'
-        ? rezultat.total.years * 365 + rezultat.total.months * 30 + rezultat.total.days
-        : sortare.key === 'gradatie'
-          ? rezultat.gradatie
-          : null
-    const copie = [...rows]
-    copie.sort((a, b) => {
-      let r
-      if (sortare.key === 'nume') r = (a.angajat.nume_complet || '').localeCompare(b.angajat.nume_complet || '', 'ro')
-      else r = valoare(a) - valoare(b)
-      return sortare.dir === 'asc' ? r : -r
-    })
-    return copie
-  }, [rows, sortare])
-
-  function sorteaza(key) {
-    setSortare((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
-  }
-  const sageata = (key) => (sortare.key === key ? (sortare.dir === 'asc' ? ' ▲' : ' ▼') : '')
-
   if (loading) return <p className="text-sm text-slate-500">Se încarcă…</p>
 
   return (
@@ -75,18 +57,27 @@ export default function VechimeTab() {
         zilele de concediu fără plată aprobate. Click pe un rând pentru detaliile de calcul.
       </p>
 
+      <div className="relative mb-3">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={cauta}
+          onChange={(e) => setCauta(e.target.value)}
+          placeholder="Caută după nume…"
+          className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus-ring"
+        />
+      </div>
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium"></th>
-              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('nume')}>Angajat{sageata('nume')}</th>
-              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('vechime')}>Vechime totală{sageata('vechime')}</th>
-              <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-slate-700" onClick={() => sorteaza('gradatie')}>Gradație{sageata('gradatie')}</th>
+              <th className="px-4 py-3 font-medium">Angajat</th>
+              <th className="px-4 py-3 font-medium">Vechime totală</th>
+              <th className="px-4 py-3 font-medium">Gradație</th>
             </tr>
           </thead>
           <tbody>
-            {rowsSortate.map(({ angajat, rezultat }) => {
+            {rows.filter(({ angajat }) => !cauta.trim() || norm(angajat.nume_complet).includes(norm(cauta.trim()))).map(({ angajat, rezultat }) => {
               const isOpen = expandedId === angajat.id
               return (
                 <>

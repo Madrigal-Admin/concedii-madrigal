@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Navbar from './components/Navbar'
@@ -100,7 +101,11 @@ export default function App() {
         {isAdmin && <Sidebar view={view} onSelect={setView} />}
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
-          <div className="mx-auto max-w-5xl">
+          <a href="/" className="hub-back mb-4">
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </a>
+          <div className="w-full">
             {checkingRole && <p className="text-sm text-slate-500">Se verifică contul…</p>}
 
             {!checkingRole && role === 'unknown' && (

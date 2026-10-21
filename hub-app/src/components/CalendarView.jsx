@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LogOut, RefreshCw, ChevronLeft, ChevronRight, Settings, X as XIcon } from 'lucide-react'
+import { LogOut, RefreshCw, ChevronLeft, ChevronRight, ArrowLeft, Settings, X as XIcon } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SiteHeader from './SiteHeader'
 import SiteFooter from './SiteFooter'
@@ -208,7 +208,6 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <SiteHeader
-        onBack={onBack}
         title="Calendar Evenimente"
         right={
           <div className="flex items-center gap-2">
@@ -226,7 +225,11 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
         }
       />
 
-      <main className="flex-1 max-w-6xl mx-auto px-6 py-8 w-full">
+      <main className="flex-1 px-6 py-8 w-full">
+        <button type="button" onClick={onBack} className="hub-back mb-4">
+          <ArrowLeft size={15} />
+          Înapoi la Hub
+        </button>
         {canManageCalendar && (
           <div className="mb-5 flex flex-wrap items-center gap-3 bg-white rounded-xl shadow-sm p-4">
             <button
