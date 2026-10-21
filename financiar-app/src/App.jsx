@@ -76,7 +76,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <Navbar displayName={displayName} roleLabel={null} onLogout={handleLogout} />
-        <main className="flex flex-1 items-center justify-center px-4">
+        <main className="flex flex-1 flex-col items-center justify-center px-4">
           <a href="/" className="hub-back mb-4">
             <ArrowLeft size={15} />
             Înapoi la Hub
@@ -98,6 +98,10 @@ export default function App() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <Sidebar view={view} onSelect={(v) => go(v)} role={role} />
         <main className="min-w-0 flex-1 p-6 md:p-8">
+          <a href="/" className="hub-back mb-4">
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </a>
           <div className="w-full">
             {view === 'referate' && <ReferateLista key={JSON.stringify(params)} {...comun} params={params} />}
             {view === 'deconturi' && <DeconturiLista key={JSON.stringify(params)} {...comun} params={params} />}

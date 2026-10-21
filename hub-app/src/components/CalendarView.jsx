@@ -225,7 +225,7 @@ export default function CalendarView({ angajat, canManageCalendar, session, onBa
         }
       />
 
-      <main className="flex-1 px-6 py-8 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-6 py-8 w-full">
         <button type="button" onClick={onBack} className="hub-back mb-4">
           <ArrowLeft size={15} />
           Înapoi la Hub

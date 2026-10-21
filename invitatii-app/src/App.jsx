@@ -96,7 +96,7 @@ function AdminApp() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <Navbar displayName={displayName} roleLabel={null} onLogout={handleLogout} />
-        <main className="flex-1 flex items-center justify-center px-4">
+        <main className="flex flex-1 flex-col items-center justify-center px-4">
           <a href="/" className="hub-back mb-4">
             <ArrowLeft size={15} />
             Înapoi la Hub
@@ -118,6 +118,10 @@ function AdminApp() {
         <Sidebar view={view} onSelect={setView} role={role} />
 
         <main className="flex-1 p-6 md:p-8 min-w-0">
+          <a href="/" className="hub-back mb-4">
+            <ArrowLeft size={15} />
+            Înapoi la Hub
+          </a>
           <div className="w-full">
             {view === 'evenimente' && <EvenimenteTab role={role} session={session} />}
             {view === 'persoane' && role === 'full' && <PersoaneTab />}
