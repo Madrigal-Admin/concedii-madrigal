@@ -12,9 +12,11 @@ const emptyVechime = { angajator: '', data_inceput: '', data_sfarsit: '', durata
 // toată fișa HR editabilă, exact cum a fost cerut ("din fișa completă").
 const CAMPURI_MODIFICABILE = [
   { key: 'tip_contract', label: 'Tip contract', type: 'select', options: [
-    { value: 'determinat', label: 'Determinat' },
-    { value: 'nedeterminat', label: 'Nedeterminat' },
+    { value: 'determinat', label: 'CIM Determinat' },
+    { value: 'nedeterminat', label: 'CIM Nedeterminat' },
+    { value: 'colaborator', label: 'Colaborator' },
   ] },
+  { key: 'obiect_contract', label: 'Obiectul contractului (colaboratori)', type: 'text' },
   { key: 'data_final_contract', label: 'Data final contract', type: 'date' },
   { key: 'grad', label: 'Grad', type: 'text' },
   { key: 'atributie_id', label: 'Atribuție', type: 'attributie' },
@@ -42,6 +44,7 @@ const CAMPURI_MODIFICABILE = [
 // alegerea unui contract.
 const CHEI_CONTRACT = [
   'tip_contract',
+  'obiect_contract',
   'data_final_contract',
   'grad',
   'atributie_id',
@@ -232,6 +235,7 @@ const EMPTY_CONTRACT = {
   numar_contract: '',
   data_inceput_contract: '',
   tip_contract: '',
+  obiect_contract: '',
   data_final_contract: '',
   grad: '',
   atributie_id: '',
@@ -284,7 +288,8 @@ function formToContractPayload(f, principal) {
     numar_contract: String(f.numar_contract || '').trim() || null,
     data_inceput_contract: f.data_inceput_contract || null,
     tip_contract: f.tip_contract || null,
-    data_final_contract: f.tip_contract === 'determinat' ? f.data_final_contract || null : null,
+    data_final_contract: ['determinat', 'colaborator'].includes(f.tip_contract) ? f.data_final_contract || null : null,
+    obiect_contract: f.tip_contract === 'colaborator' ? String(f.obiect_contract || '').trim() || null : null,
     grad: String(f.grad || '').trim() || null,
     atributie_id: f.atributie_id || null,
     // contractul principal folosește departamentul/funcția din Hub
@@ -401,6 +406,14 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
     for (const c of contracte) {
       if (c.tip_contract === 'determinat' && !c.data_final_contract) {
         setError(`Contractul "${etichetaDraft(c, contracte.indexOf(c))}" (determinat) are nevoie de o dată de final.`)
+        setContractId(c.id)
+        setTab('contract')
+        return
+      }
+    }
+    for (const c of contracte) {
+      if (c.tip_contract === 'colaborator' && !String(c.obiect_contract || '').trim()) {
+        setError(`Contractul "${etichetaDraft(c, contracte.indexOf(c))}" (colaborator) are nevoie de obiectul contractului.`)
         setContractId(c.id)
         setTab('contract')
         return
@@ -620,8 +633,9 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
                     >
                       <option value="">— Alege —</option>
-                      <option value="determinat">Determinat</option>
-                      <option value="nedeterminat">Nedeterminat</option>
+                      <option value="determinat">CIM Determinat</option>
+                      <option value="nedeterminat">CIM Nedeterminat</option>
+                      <option value="colaborator">Colaborator</option>
                     </select>
                   </div>
                   <div>
@@ -633,10 +647,11 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                     />
                   </div>
-                  {cf.tip_contract === 'determinat' && (
+                  {(cf.tip_contract === 'determinat' || cf.tip_contract === 'colaborator') && (
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Data final contract <span className="text-rose-500">*</span>
+                        Data final contract{' '}
+                        {cf.tip_contract === 'determinat' ? <span className="text-rose-500">*</span> : <span className="text-slate-400">(opțional)</span>}
                       </label>
                       <input
                         type="date"
@@ -644,6 +659,23 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
                         onChange={(e) => updC('data_final_contract', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
+                    </div>
+                  )}
+                  {cf.tip_contract === 'colaborator' && (
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Obiectul contractului <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={cf.obiect_contract || ''}
+                        onChange={(e) => updC('obiect_contract', e.target.value)}
+                        placeholder='ex. „Servicii de comunicare"'
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Se preia automat în Rapoarte de activitate (împreună cu numărul și perioada contractului).
+                        Atribuția rămâne doar notă internă.
+                      </p>
                     </div>
                   )}
                   <div>

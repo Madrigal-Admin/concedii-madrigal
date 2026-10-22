@@ -19,7 +19,7 @@ const COLOANE = [
   { key: 'atributie', grup: 'Identitate & Organizare', label: 'Atribuție', get: ({ emp }) => profilOf(emp)?.attribution?.name || '—', sort: ({ emp }) => profilOf(emp)?.attribution?.name || '' },
   { key: 'grad', grup: 'Identitate & Organizare', label: 'Grad', get: ({ emp }) => profilOf(emp)?.grad || '—', sort: ({ emp }) => profilOf(emp)?.grad || '' },
 
-  { key: 'tip_contract', grup: 'Contract & Program', label: 'Tip contract', get: ({ emp }) => (profilOf(emp)?.tip_contract === 'determinat' ? 'Determinat' : profilOf(emp)?.tip_contract === 'nedeterminat' ? 'Nedeterminat' : '—'), sort: ({ emp }) => profilOf(emp)?.tip_contract || '' },
+  { key: 'tip_contract', grup: 'Contract & Program', label: 'Tip contract', get: ({ emp }) => ({ determinat: 'CIM Determinat', nedeterminat: 'CIM Nedeterminat', colaborator: 'Colaborator' }[profilOf(emp)?.tip_contract] || '—'), sort: ({ emp }) => profilOf(emp)?.tip_contract || '' },
   { key: 'numar_contract', grup: 'Contract & Program', label: 'Număr contract', get: ({ emp }) => profilOf(emp)?.numar_contract || '—', sort: ({ emp }) => profilOf(emp)?.numar_contract || '' },
   { key: 'data_inceput_contract', grup: 'Contract & Program', label: 'Data început contract', get: ({ emp }) => profilOf(emp)?.data_inceput_contract || '—', sort: ({ emp }) => profilOf(emp)?.data_inceput_contract || '' },
   { key: 'data_final_contract', grup: 'Contract & Program', label: 'Data final contract', get: ({ emp }) => profilOf(emp)?.data_final_contract || '—', sort: ({ emp }) => profilOf(emp)?.data_final_contract || '' },
@@ -118,7 +118,7 @@ function calculeazaRemindere(rows) {
 
     // Alertă de expirare pentru FIECARE contract determinat.
     for (const c of getContracte(emp)) {
-      if (c.tip_contract === 'determinat' && inFereastra(c.data_final_contract)) {
+      if ((c.tip_contract === 'determinat' || c.tip_contract === 'colaborator') && inFereastra(c.data_final_contract)) {
         remindere.push({
           tip: 'contract',
           angajat: emp.nume_complet,

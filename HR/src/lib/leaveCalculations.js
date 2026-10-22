@@ -109,6 +109,7 @@ export const CONTRACT_FIELDS = [
   'numar_contract',
   'data_inceput_contract',
   'tip_contract',
+  'obiect_contract',
   'data_final_contract',
   'grad',
   'atributie_id',
