@@ -17,6 +17,10 @@ const CAMPURI_MODIFICABILE = [
     { value: 'colaborator', label: 'Colaborator' },
   ] },
   { key: 'obiect_contract', label: 'Obiectul contractului (colaboratori)', type: 'text' },
+  { key: 'calitate_contract', label: 'Calitate (colaboratori)', type: 'select', options: [
+    { value: 'prestator', label: 'Prestator' },
+    { value: 'cedent', label: 'Cedent' },
+  ] },
   { key: 'data_final_contract', label: 'Data final contract', type: 'date' },
   { key: 'grad', label: 'Grad', type: 'text' },
   { key: 'atributie_id', label: 'Atribuție', type: 'attributie' },
@@ -45,6 +49,7 @@ const CAMPURI_MODIFICABILE = [
 const CHEI_CONTRACT = [
   'tip_contract',
   'obiect_contract',
+  'calitate_contract',
   'data_final_contract',
   'grad',
   'atributie_id',
@@ -236,6 +241,7 @@ const EMPTY_CONTRACT = {
   data_inceput_contract: '',
   tip_contract: '',
   obiect_contract: '',
+  calitate_contract: '',
   data_final_contract: '',
   grad: '',
   atributie_id: '',
@@ -289,6 +295,7 @@ function formToContractPayload(f, principal) {
     data_inceput_contract: f.data_inceput_contract || null,
     tip_contract: f.tip_contract || null,
     data_final_contract: ['determinat', 'colaborator'].includes(f.tip_contract) ? f.data_final_contract || null : null,
+    calitate_contract: f.tip_contract === 'colaborator' ? f.calitate_contract || null : null,
     obiect_contract: f.tip_contract === 'colaborator' ? String(f.obiect_contract || '').trim() || null : null,
     grad: String(f.grad || '').trim() || null,
     atributie_id: f.atributie_id || null,
@@ -414,6 +421,12 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
     for (const c of contracte) {
       if (c.tip_contract === 'colaborator' && !String(c.obiect_contract || '').trim()) {
         setError(`Contractul "${etichetaDraft(c, contracte.indexOf(c))}" (colaborator) are nevoie de obiectul contractului.`)
+        setContractId(c.id)
+        setTab('contract')
+        return
+      }
+      if (c.tip_contract === 'colaborator' && !c.calitate_contract) {
+        setError(`Contractul "${etichetaDraft(c, contracte.indexOf(c))}" (colaborator) are nevoie de calitate (Prestator sau Cedent).`)
         setContractId(c.id)
         setTab('contract')
         return
@@ -659,6 +672,22 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
                         onChange={(e) => updC('data_final_contract', e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
                       />
+                    </div>
+                  )}
+                  {cf.tip_contract === 'colaborator' && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Calitate <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={cf.calitate_contract || ''}
+                        onChange={(e) => updC('calitate_contract', e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"
+                      >
+                        <option value="">— Alege —</option>
+                        <option value="prestator">Prestator</option>
+                        <option value="cedent">Cedent</option>
+                      </select>
                     </div>
                   )}
                   {cf.tip_contract === 'colaborator' && (

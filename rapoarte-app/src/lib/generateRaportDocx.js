@@ -27,6 +27,16 @@ export async function descarcaRaportWord(raport, contract, persoana, campuri) {
     )
   }
 
+  // 1b. calitatea (Prestator / Cedent) din contract
+  if (contract.calitate !== 'prestator' && contract.calitate !== 'cedent') {
+    throw new Error(
+      `Contractul nr. ${contract.numar_contract || '—'} al lui ${persoana.nume} nu are calitatea completată (Prestator sau Cedent). ` +
+        (persoana.tip === 'angajat'
+          ? 'Completeaz-o în Resurse Umane (contractul de colaborator) și încearcă din nou.'
+          : 'Completeaz-o în Rapoarte → Persoane și contracte și încearcă din nou.')
+    )
+  }
+
   // 2. șablonul
   let query = supabase.from('rap_sabloane').select('*').eq('modul', 'activitate')
   query = raport.sablon_id ? query.eq('id', raport.sablon_id) : query.eq('activ', true)
@@ -48,7 +58,7 @@ export async function descarcaRaportWord(raport, contract, persoana, campuri) {
     luna2: numeLuna(raport.luna),
     sex_T: sex === 'M' ? 'ul' : 'a',
     nume: persoana.nume,
-    tip: contract.tip === 'CIM' ? 'angajat' : 'colaborator',
+    tip: contract.calitate === 'cedent' ? 'Cedent' : 'Prestator',
     departament: contract.departament || '',
     NrContract: contract.numar_contract || '',
     activitati: raport.activitati || '',

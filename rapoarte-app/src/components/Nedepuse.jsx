@@ -63,7 +63,7 @@ export default function Nedepuse() {
               {lista.map((r) => (
                 <tr key={r.contract_id} className="border-t border-slate-100">
                   <td className="px-4 py-2 font-medium text-slate-800">{r.nume}</td>
-                  <td className="px-4 py-2">{r.tip === 'CIM' ? 'Angajat' : 'Colaborator'}</td>
+                  <td className="px-4 py-2">{r.calitate === 'cedent' ? 'Cedent' : r.calitate === 'prestator' ? 'Prestator' : <span className="text-amber-600">necompletată</span>}</td>
                   <td className="px-4 py-2">{r.departament || '—'}</td>
                   <td className="px-4 py-2">{r.obiect}</td>
                   <td className="px-4 py-2">{r.numar_contract}</td>

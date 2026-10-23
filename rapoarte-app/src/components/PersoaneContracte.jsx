@@ -5,7 +5,7 @@ import { formatData } from '../lib/luni'
 import { inputCls, labelCls, btnPrimary, btnGhost, cardCls } from '../lib/ui'
 
 const EMPTY_CONTRACT = {
-  numar_contract: '', tip: 'colaborare', departament: '', obiect: '',
+  numar_contract: '', tip: 'colaborare', calitate: '', departament: '', obiect: '',
   valabil_de_la: '', valabil_pana: '', hr_contract_id: null, activ: true,
 }
 
@@ -89,12 +89,16 @@ export default function PersoaneContracte() {
     if (!f.numar_contract.trim() || !f.obiect.trim() || !f.valabil_de_la) {
       return setError('Completează numărul contractului, obiectul și data de început.')
     }
+    if (f.calitate !== 'prestator' && f.calitate !== 'cedent') {
+      return setError('Alege calitatea: Prestator sau Cedent.')
+    }
     if (f.valabil_pana && f.valabil_pana < f.valabil_de_la) {
       return setError('Data de final nu poate fi înaintea celei de început.')
     }
     const payload = {
       numar_contract: f.numar_contract.trim(),
       tip: 'colaborare',
+      calitate: f.calitate,
       departament: f.departament.trim() || null,
       obiect: f.obiect.trim(),
       valabil_de_la: f.valabil_de_la,
@@ -126,6 +130,14 @@ export default function PersoaneContracte() {
           <div>
             <label className={labelCls}>Număr contract *</label>
             <input className={inputCls} value={f.numar_contract} onChange={(e) => setF('numar_contract', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Calitate *</label>
+            <select className={inputCls} value={f.calitate || ''} onChange={(e) => setF('calitate', e.target.value)}>
+              <option value="">— Alege —</option>
+              <option value="prestator">Prestator</option>
+              <option value="cedent">Cedent</option>
+            </select>
           </div>
           <div>
             <label className={labelCls}>Obiect (etichetă scurtă, ex. „Comunicare") *</label>
@@ -249,6 +261,7 @@ export default function PersoaneContracte() {
                   <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
                     <span className={c.activ ? 'text-slate-700' : 'text-slate-400'}>
                       <strong>{c.obiect}</strong> · nr. {c.numar_contract} · {c.tip === 'CIM' ? 'CIM (nu depune rapoarte)' : 'colaborare'}
+                      {c.tip !== 'CIM' ? (c.calitate === 'cedent' ? ' · Cedent' : c.calitate === 'prestator' ? ' · Prestator' : ' · ⚠ calitate necompletată') : ''}
                       {c.hr_contract_id ? ' · din HR' : ''}
                       {c.departament ? ` · ${c.departament}` : ''} · {formatData(c.valabil_de_la)} →{' '}
                       {c.valabil_pana ? formatData(c.valabil_pana) : 'fără final'}
