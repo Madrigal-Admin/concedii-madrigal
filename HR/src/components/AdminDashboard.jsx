@@ -7,6 +7,8 @@ import OverviewTab from './admin/OverviewTab'
 import ReportsTab from './admin/ReportsTab'
 import SettingsTab from './admin/SettingsTab'
 import VechimeTab from './admin/VechimeTab'
+import MedicinaTab from './admin/MedicinaTab'
+import EvaluariTab from './admin/EvaluariTab'
 
 // Un tab simplu sau un grup (meniu care se deschide) cu mai multe taburi.
 const MENIU = [
@@ -22,7 +24,9 @@ const MENIU = [
   },
   { key: 'recoveries', label: 'Gestiune Recuperări' },
   { key: 'vechime', label: 'Centralizator Vechime', fullAdminOnly: true },
-  { key: 'settings', label: 'Setări', fullAdminOnly: true },
+  { key: 'medicina', label: 'Medicina Muncii', fullAdminOnly: true },
+  { key: 'evaluari', label: 'Evaluări', fullAdminOnly: true },
+  { key: 'settings', label: 'Date Angajați', fullAdminOnly: true },
 ]
 
 const pill = (activ) =>
@@ -102,6 +106,8 @@ export default function AdminDashboard({ role }) {
         {tab === 'recoveries' && <RecoveriesTab />}
         {tab === 'reports' && <ReportsTab />}
         {tab === 'vechime' && isFullAdmin && <VechimeTab />}
+        {tab === 'medicina' && isFullAdmin && <MedicinaTab />}
+        {tab === 'evaluari' && isFullAdmin && <EvaluariTab />}
         {tab === 'settings' && isFullAdmin && <SettingsTab />}
       </div>
     </div>

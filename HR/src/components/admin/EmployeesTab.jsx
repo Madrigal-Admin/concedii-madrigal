@@ -38,8 +38,6 @@ const CAMPURI_MODIFICABILE = [
   { key: 'act_eliberat_de', label: 'Act identitate — Eliberat de', type: 'text' },
   { key: 'act_data_eliberare', label: 'Act identitate — Data eliberării', type: 'date' },
   { key: 'act_data_expirare', label: 'Act identitate — Data expirării', type: 'date' },
-  { key: 'medicina_muncii_data', label: 'Medicina muncii — dată', type: 'date' },
-  { key: 'evaluare_data', label: 'Evaluare — dată', type: 'date' },
   { key: 'observatii', label: 'Observații', type: 'text' },
 ]
 
@@ -61,8 +59,14 @@ const CHEI_CONTRACT = [
 ]
 const esteCampContract = (key) => CHEI_CONTRACT.includes(key)
 
+// Câmpuri mutate în taburile „Medicina Muncii" / „Evaluări"; rămân doar pentru actele adiționale vechi.
+const ETICHETE_VECHI = {
+  medicina_muncii_data: 'Medicina muncii — dată',
+  evaluare_data: 'Evaluare — dată',
+}
+
 function labelPentruCamp(key) {
-  return CAMPURI_MODIFICABILE.find((c) => c.key === key)?.label || key
+  return CAMPURI_MODIFICABILE.find((c) => c.key === key)?.label || ETICHETE_VECHI[key] || key
 }
 
 function formatValoare(key, value, attributions) {
@@ -232,8 +236,6 @@ const EMPTY_PROFIL = {
   telefon: '',
   iban: '',
   observatii: '',
-  medicina_muncii_data: '',
-  evaluare_data: '',
 }
 
 const EMPTY_CONTRACT = {
@@ -459,8 +461,6 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
       telefon: form.telefon.trim() || null,
       iban: form.iban.trim() || null,
       observatii: form.observatii.trim() || null,
-      medicina_muncii_data: form.medicina_muncii_data || null,
-      evaluare_data: form.evaluare_data || null,
       numar_contract: principalPayload.numar_contract,
       data_inceput_contract: principalPayload.data_inceput_contract,
       tip_contract: principalPayload.tip_contract,
@@ -892,27 +892,6 @@ function HrProfileEditor({ angajat, attributions, departments, positions, onClos
                         className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus-ring"
                       />
                     </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Medicina muncii — ultima dată</label>
-                    <input
-                      type="date"
-                      value={form.medicina_muncii_data}
-                      onChange={(e) => upd('medicina_muncii_data', e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Evaluare — ultima dată</label>
-                    <input
-                      type="date"
-                      value={form.evaluare_data}
-                      onChange={(e) => upd('evaluare_data', e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-                    />
                   </div>
                 </div>
 

@@ -4,16 +4,30 @@ import {
   calculateBalances,
   etichetaContract,
   formatDate,
+  getContracte,
   STATUS_LABELS_EMPLOYEE,
   STATUS_STYLES,
   CERTIFICATE_STATUS_LABELS,
   CERTIFICATE_STATUS_STYLES,
 } from '../lib/leaveCalculations'
+import { TIP_CONTROL, CALIFICATIVE, eticheta, formatNota } from '../lib/istoricHr'
+
+const TIP_CONTRACT_LABEL = { determinat: 'CIM determinat', nedeterminat: 'CIM nedeterminat', colaborator: 'Colaborare' }
+
+// Perioada contractului: interval (data → data) sau data – nedeterminat
+function perioadaContract(c) {
+  const de = formatDate(c.data_inceput_contract)
+  if (c.tip_contract === 'nedeterminat') return `${de} – nedeterminat`
+  if (c.data_final_contract) return `${de} → ${formatDate(c.data_final_contract)}`
+  return `${de} – fără dată de final`
+}
 
 export default function EmployeeDashboard({ employee, onNavigate }) {
   const [requests, setRequests] = useState([])
   const [certificateRequests, setCertificateRequests] = useState([])
   const [recoveries, setRecoveries] = useState([])
+  const [medicina, setMedicina] = useState([])
+  const [evaluari, setEvaluari] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -22,7 +36,7 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: reqs }, { data: certReqs }, { data: recs }] = await Promise.all([
+    const [{ data: reqs }, { data: certReqs }, { data: recs }, { data: med }, { data: evals }] = await Promise.all([
       supabase
         .from('leave_requests')
         .select('*')
@@ -34,10 +48,14 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
         .eq('angajat_id', employee.id)
         .order('created_at', { ascending: false }),
       supabase.from('overtime_recoveries').select('*').eq('angajat_id', employee.id),
+      supabase.from('hr_medicina_muncii').select('*').eq('angajat_id', employee.id).order('data_control', { ascending: false }),
+      supabase.from('hr_evaluari').select('*').eq('angajat_id', employee.id).order('data_evaluare', { ascending: false }),
     ])
     setRequests(reqs || [])
     setCertificateRequests(certReqs || [])
     setRecoveries(recs || [])
+    setMedicina(med || [])
+    setEvaluari(evals || [])
     setLoading(false)
   }
 
@@ -61,6 +79,8 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
   const cards = cardsPentru(balance, true)
   const subtotalAni = (b) => Math.round((b.y2 + b.y1 + b.y) * 10) / 10
 
+  const contracteCuPerioada = getContracte(employee).filter((c) => c.data_inceput_contract)
+
   const combinedRequests = [
     ...requests.map((r) => ({ ...r, kind: 'leave' })),
     ...certificateRequests.map((r) => ({ ...r, kind: 'certificate' })),
@@ -74,6 +94,25 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
       <p className="mt-1 text-sm text-slate-500">
         {employee.department?.name} {employee.position?.name ? `· ${employee.position.name}` : ''}
       </p>
+
+      {contracteCuPerioada.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            {contracteCuPerioada.length > 1 ? 'Contractele mele' : 'Contractul meu'}
+          </p>
+          <div className="mt-1">
+            {contracteCuPerioada.map((c) => (
+              <div key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-100 py-2 first:border-t-0">
+                <span className="text-sm text-slate-700">
+                  {TIP_CONTRACT_LABEL[c.tip_contract] || 'Contract'}
+                  {c.numar_contract ? ` · nr. ${c.numar_contract}` : ''}
+                </span>
+                <span className="text-sm font-medium text-ink">{perioadaContract(c)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!multiple && (
         <>
@@ -182,6 +221,35 @@ export default function EmployeeDashboard({ employee, onNavigate }) {
             </span>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink">Medicina muncii</h2>
+          <div className="mt-3 space-y-2">
+            {medicina.length === 0 && <p className="text-sm text-slate-500">Nicio înregistrare.</p>}
+            {medicina.map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-medium text-ink">{formatDate(m.data_control)}</p>
+                <p className="text-xs text-slate-500">{eticheta(TIP_CONTROL, m.tip_control) || '—'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink">Evaluările mele</h2>
+          <div className="mt-3 space-y-2">
+            {evaluari.length === 0 && <p className="text-sm text-slate-500">Nicio înregistrare.</p>}
+            {evaluari.map((e) => (
+              <div key={e.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-medium text-ink">{formatDate(e.data_evaluare)}</p>
+                <p className="text-xs text-slate-500">
+                  {[eticheta(CALIFICATIVE, e.calificativ), formatNota(e.nota)].filter(Boolean).join(' · ') || '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

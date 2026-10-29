@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Bell, Cake, TrendingUp, IdCard, FileWarning, Columns3, Printer, Download, Save, X as XIcon } from 'lucide-react'
+import { Search, Bell, Cake, TrendingUp, IdCard, FileWarning, Columns3, Printer, Download, Save, X as XIcon, Stethoscope, Star, ChevronDown } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { calculateBalance, getHrProfil, getContracte } from '../../lib/leaveCalculations'
+import { ultima, scadenta, statusScadenta, eticheta, TIP_CONTROL, CALIFICATIVE, formatNota } from '../../lib/istoricHr'
 import { calculateVechime, parseCnpBirthDate, dataUrmatoareiGradatii } from '../../lib/vechimeCalculations'
 
 // Datele personale + câmpurile contractului PRINCIPAL (vezi getHrProfil).
@@ -44,8 +45,12 @@ const COLOANE = [
   { key: 'iban', grup: 'Date personale & Acte', label: 'IBAN', get: ({ emp }) => profilOf(emp)?.iban || '—', sort: ({ emp }) => profilOf(emp)?.iban || '' },
   { key: 'act_identitate', grup: 'Date personale & Acte', label: 'Act identitate (serie/nr)', get: ({ emp }) => { const p = profilOf(emp); return p?.act_serie || p?.act_numar ? `${p?.act_serie || ''} ${p?.act_numar || ''}`.trim() : '—' }, sort: ({ emp }) => profilOf(emp)?.act_numar || '' },
   { key: 'act_data_expirare', grup: 'Date personale & Acte', label: 'Act — data expirării', get: ({ emp }) => profilOf(emp)?.act_data_expirare || '—', sort: ({ emp }) => profilOf(emp)?.act_data_expirare || '' },
-  { key: 'medicina_muncii', grup: 'Date personale & Acte', label: 'Medicina muncii', get: ({ emp }) => profilOf(emp)?.medicina_muncii_data || '—', sort: ({ emp }) => profilOf(emp)?.medicina_muncii_data || '' },
-  { key: 'evaluare', grup: 'Date personale & Acte', label: 'Evaluare', get: ({ emp }) => profilOf(emp)?.evaluare_data || '—', sort: ({ emp }) => profilOf(emp)?.evaluare_data || '' },
+  { key: 'medicina_muncii', grup: 'Medicina muncii & Evaluări', label: 'Medicina muncii — ultimul control', get: ({ emp }) => ultima(emp.hr_medicina_muncii, 'data_control')?.data_control || '—', sort: ({ emp }) => ultima(emp.hr_medicina_muncii, 'data_control')?.data_control || '' },
+  { key: 'medicina_tip', grup: 'Medicina muncii & Evaluări', label: 'Medicina muncii — tip control', get: ({ emp }) => eticheta(TIP_CONTROL, ultima(emp.hr_medicina_muncii, 'data_control')?.tip_control) || '—', sort: ({ emp }) => ultima(emp.hr_medicina_muncii, 'data_control')?.tip_control || '' },
+  { key: 'medicina_scadenta', grup: 'Medicina muncii & Evaluări', label: 'Medicina muncii — scadență', get: ({ emp }) => scadenta(ultima(emp.hr_medicina_muncii, 'data_control')?.data_control) || '—', sort: ({ emp }) => scadenta(ultima(emp.hr_medicina_muncii, 'data_control')?.data_control) || '' },
+  { key: 'evaluare', grup: 'Medicina muncii & Evaluări', label: 'Evaluare — ultima dată', get: ({ emp }) => ultima(emp.hr_evaluari, 'data_evaluare')?.data_evaluare || '—', sort: ({ emp }) => ultima(emp.hr_evaluari, 'data_evaluare')?.data_evaluare || '' },
+  { key: 'evaluare_calificativ', grup: 'Medicina muncii & Evaluări', label: 'Evaluare — calificativ', get: ({ emp }) => eticheta(CALIFICATIVE, ultima(emp.hr_evaluari, 'data_evaluare')?.calificativ) || '—', sort: ({ emp }) => ultima(emp.hr_evaluari, 'data_evaluare')?.calificativ || '' },
+  { key: 'evaluare_nota', grup: 'Medicina muncii & Evaluări', label: 'Evaluare — nota', get: ({ emp }) => formatNota(ultima(emp.hr_evaluari, 'data_evaluare')?.nota) || '—', sort: ({ emp }) => Number(ultima(emp.hr_evaluari, 'data_evaluare')?.nota) || 0 },
   { key: 'observatii', grup: 'Date personale & Acte', label: 'Observații', get: ({ emp }) => profilOf(emp)?.observatii || '—', sort: ({ emp }) => profilOf(emp)?.observatii || '' },
 ]
 
@@ -75,7 +80,21 @@ const REMINDER_ICON = {
   gradatie: TrendingUp,
   buletin: IdCard,
   contract: FileWarning,
+  medicina: Stethoscope,
+  evaluare: Star,
 }
+
+// Titlul grupului când sunt multe remindere pe același subiect (acordeon)
+const TITLU_GRUP = {
+  aniversare: 'Aniversări la Madrigal',
+  nastere: 'Zile de naștere',
+  gradatie: 'Treceri la o nouă gradație',
+  buletin: 'Acte de identitate care expiră',
+  contract: 'Contracte care expiră',
+  medicina: 'Medicina muncii',
+  evaluare: 'Evaluări',
+}
+const PRAG_ACORDEON = 2
 
 function calculeazaRemindere(rows) {
   const remindere = []
@@ -116,6 +135,26 @@ function calculeazaRemindere(rows) {
       remindere.push({ tip: 'buletin', angajat: emp.nume_complet, data: profil.act_data_expirare, detaliu: 'Actul de identitate expiră' })
     }
 
+    // Medicina muncii și evaluare: scadența = ultima înregistrare + 12 luni (inclusiv cele depășite).
+    for (const [tip, randuri, camp, text] of [
+      ['medicina', emp.hr_medicina_muncii, 'data_control', 'Control medicina muncii'],
+      ['evaluare', emp.hr_evaluari, 'data_evaluare', 'Evaluare anuală'],
+    ]) {
+      const ult = ultima(randuri, camp)
+      if (!ult) continue
+      const scad = scadenta(ult[camp])
+      const st = statusScadenta(scad)
+      if (st && st.tip !== 'ok') {
+        remindere.push({
+          tip,
+          angajat: emp.nume_complet,
+          data: scad,
+          depasit: st.tip === 'depasit',
+          detaliu: st.tip === 'depasit' ? `${text} depășit cu ${Math.abs(st.zile)} zile` : `${text} scadent`,
+        })
+      }
+    }
+
     // Alertă de expirare pentru FIECARE contract determinat.
     for (const c of getContracte(emp)) {
       if ((c.tip_contract === 'determinat' || c.tip_contract === 'colaborator') && inFereastra(c.data_final_contract)) {
@@ -142,6 +181,7 @@ export default function OverviewTab({ onNavigate }) {
   const [vederi, setVederi] = useState([])
   const [numeVedereNoua, setNumeVedereNoua] = useState('')
   const [cauta, setCauta] = useState('')
+  const [grupuriDeschise, setGrupuriDeschise] = useState({})
 
   useEffect(() => {
     load()
@@ -164,7 +204,7 @@ export default function OverviewTab({ onNavigate }) {
     const [{ data: employees }, { data: requests }, { data: recoveries }, { data: vederiSalvate }] = await Promise.all([
       supabase
         .from('angajati')
-        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name)), hr_vechime_anterioara(*)')
+        .select('*, department:departments(name), position:positions(name), hr_profil_angajat(*), hr_contracte(*, attribution:attributions(name)), hr_vechime_anterioara(*), hr_medicina_muncii(*), hr_evaluari(*)')
         .eq('activ', true)
         .order('nume_complet'),
       supabase.from('leave_requests').select('*').eq('status', 'approved'),
@@ -307,17 +347,46 @@ export default function OverviewTab({ onNavigate }) {
           <p className="text-xs text-slate-400">Niciun eveniment în următoarele 30 de zile.</p>
         ) : (
           <div className="space-y-1.5">
-            {remindere.map((r, i) => {
-              const Icon = REMINDER_ICON[r.tip] || Bell
-              return (
-                <div key={i} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                  <Icon size={13} className="shrink-0 text-slate-400" />
-                  <span className="text-slate-400">{r.data}</span>
-                  <span className="font-medium text-slate-700">{r.angajat}</span>
-                  <span className="text-slate-500">— {r.detaliu}</span>
-                </div>
-              )
-            })}
+            {(() => {
+              const nrPeTip = {}
+              remindere.forEach((r) => { nrPeTip[r.tip] = (nrPeTip[r.tip] || 0) + 1 })
+              const randeaza = (r, i) => {
+                const Icon = REMINDER_ICON[r.tip] || Bell
+                return (
+                  <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${r.depasit ? 'bg-rose-50' : 'bg-slate-50'}`}>
+                    <Icon size={13} className={`shrink-0 ${r.depasit ? 'text-rose-500' : 'text-slate-400'}`} />
+                    <span className="text-slate-400">{r.data}</span>
+                    <span className="font-medium text-slate-700">{r.angajat}</span>
+                    <span className={r.depasit ? 'text-rose-600' : 'text-slate-500'}>— {r.detaliu}</span>
+                  </div>
+                )
+              }
+              const afisate = new Set()
+              return remindere.map((r, i) => {
+                if (nrPeTip[r.tip] <= PRAG_ACORDEON) return randeaza(r, i)
+                if (afisate.has(r.tip)) return null
+                afisate.add(r.tip)
+                const Icon = REMINDER_ICON[r.tip] || Bell
+                const grup = remindere.filter((x) => x.tip === r.tip)
+                const nrDepasite = grup.filter((x) => x.depasit).length
+                const deschis = !!grupuriDeschise[r.tip]
+                return (
+                  <div key={`g-${r.tip}`} className="rounded-lg bg-slate-50">
+                    <button
+                      onClick={() => setGrupuriDeschise((s) => ({ ...s, [r.tip]: !s[r.tip] }))}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"
+                      aria-expanded={deschis}
+                    >
+                      <Icon size={13} className="shrink-0 text-slate-400" />
+                      <span className="font-medium text-slate-700">{TITLU_GRUP[r.tip] || r.tip} — {grup.length} angajați</span>
+                      {nrDepasite > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-600">{nrDepasite} depășite</span>}
+                      <ChevronDown size={14} className={`ml-auto text-slate-400 transition ${deschis ? 'rotate-180' : ''}`} />
+                    </button>
+                    {deschis && <div className="space-y-1 px-2 pb-2">{grup.map((x, k) => randeaza(x, `${r.tip}-${k}`))}</div>}
+                  </div>
+                )
+              })
+            })()}
           </div>
         )}
       </div>
