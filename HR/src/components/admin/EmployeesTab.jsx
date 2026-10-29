@@ -21,7 +21,7 @@ const CAMPURI_MODIFICABILE = [
     { value: 'prestator', label: 'Prestator' },
     { value: 'cedent', label: 'Cedent' },
   ] },
-  { key: 'data_final_contract', label: 'Data final contract (prelungire)', fixedTermOnly: true, type: 'date' },
+  { key: 'data_final_contract', label: 'Prelungire contract (data final nouă)', fixedTermOnly: true, type: 'date' },
   { key: 'grad', label: 'Grad', type: 'text' },
   { key: 'atributie_id', label: 'Atribuție', type: 'attributie' },
   { key: 'norma_ore', label: 'Normă de lucru', type: 'select', options: [2, 4, 6, 8].map((v) => ({ value: String(v), label: `${v}h` })) },
@@ -63,6 +63,13 @@ const esteCampContract = (key) => CHEI_CONTRACT.includes(key)
 const ETICHETE_VECHI = {
   medicina_muncii_data: 'Medicina muncii — dată',
   evaluare_data: 'Evaluare — dată',
+  prelungire_de_la: 'Prelungire de la',
+}
+
+const ziUrmatoare = (iso) => {
+  if (!iso) return ''
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
 }
 
 function labelPentruCamp(key) {
@@ -1098,8 +1105,8 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
   const tipCtr = contractSel?.tip_contract
   const campuriDisponibile = CAMPURI_MODIFICABILE.filter((c) => {
     if (c.inActe === false) return false
-    if (c.soloColaborator && tipCtr !== 'colaborator') return false
-    if (c.fixedTermOnly && !(tipCtr === 'determinat' || tipCtr === 'colaborator')) return false
+    if (c.soloColaborator && tipCtr && tipCtr !== 'colaborator') return false
+    if (c.fixedTermOnly && tipCtr === 'nedeterminat') return false
     return true
   })
   const valoareActuala = (key) => (esteCampContract(key) ? contractSel?.[key] : profil[key])
@@ -1108,6 +1115,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
   const [showForm, setShowForm] = useState(false)
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
   const [numarAct, setNumarAct] = useState('')
+  const [prelungireDe, setPrelungireDe] = useState('')
   const [selectate, setSelectate] = useState({})
   const [valoriNoi, setValoriNoi] = useState({})
   const [saving, setSaving] = useState(false)
@@ -1133,6 +1141,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
     if (!valoriNoi[key]) {
       setValoriNoi((v) => ({ ...v, [key]: valoareActuala(key) ?? '' }))
     }
+    if (key === 'data_final_contract' && !prelungireDe) setPrelungireDe(ziUrmatoare(contractSel?.data_final_contract))
   }
 
   async function handleSubmit(e) {
@@ -1154,6 +1163,22 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
     }
 
     const campuriAlese = Object.keys(selectate).filter((k) => selectate[k] && campuriDisponibile.some((c) => c.key === k))
+    if (campuriAlese.includes('data_final_contract')) {
+      const nou = valoriNoi.data_final_contract
+      const actual = contractSel?.data_final_contract
+      if (!nou) {
+        setError('Completează noua dată de final a contractului.')
+        return
+      }
+      if (actual && nou <= actual) {
+        setError('Noua dată de final trebuie să fie după data de final actuală.')
+        return
+      }
+      if (prelungireDe && nou < prelungireDe) {
+        setError('Data de final nu poate fi înaintea începutului prelungirii.')
+        return
+      }
+    }
     if (campuriAlese.length === 0) {
       setError('Bifează cel puțin un câmp de modificat.')
       return
@@ -1177,6 +1202,10 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
 
       modificari[key] = { de_la: valoareActuala(key) ?? null, la: valoareNoua }
       ;(esteCampContract(key) ? updateContract : updatePayload)[key] = valoareNoua === '' ? null : valoareNoua
+    }
+
+    if (campuriAlese.includes('data_final_contract') && prelungireDe) {
+      modificari.prelungire_de_la = { de_la: null, la: prelungireDe }
     }
 
     const aplicatPeContract = campuriAlese.some(esteCampContract)
@@ -1216,6 +1245,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
     setSelectate({})
     setValoriNoi({})
     setNumarAct('')
+    setPrelungireDe('')
     setShowForm(false)
     onApplied(formUpdates, aplicatPeContract ? contractSel.id : null)
     load()
@@ -1260,6 +1290,12 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
               />
             </div>
           </div>
+
+          {salvate.length === 0 && (
+            <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+              Actele adiționale se aplică pe contracte salvate. Salvează mai întâi contractul (butonul de salvare de jos), apoi adaugă actul.
+            </p>
+          )}
 
           {salvate.length > 1 && (
             <div>
@@ -1329,6 +1365,23 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
                       <option value="da">Da</option>
                       <option value="nu">Nu</option>
                     </select>
+                  )}
+                  {c.key === 'data_final_contract' && (
+                    <div className="mb-2">
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Prelungirea începe la</label>
+                      <input
+                        type="date"
+                        value={prelungireDe}
+                        onChange={(e) => setPrelungireDe(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus-ring"
+                      />
+                      {contractSel?.data_final_contract && prelungireDe && prelungireDe > ziUrmatoare(contractSel.data_final_contract) && (
+                        <p className="mt-1 text-[11px] text-amber-700">
+                          Între finalul actual ({contractSel.data_final_contract}) și începutul prelungirii există o pauză; vechimea o va include.
+                        </p>
+                      )}
+                      <label className="mb-1 mt-2 block text-[11px] font-medium text-slate-600">Prelungirea se încheie la (noua dată de final)</label>
+                    </div>
                   )}
                   {(c.type === 'date' || c.type === 'time') && (
                     <input
