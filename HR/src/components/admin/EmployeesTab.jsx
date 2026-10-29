@@ -11,17 +11,17 @@ const emptyVechime = { angajator: '', data_inceput: '', data_sfarsit: '', durata
 // Câmpurile pe care adminul le poate selecta la un "Act adițional" — practic
 // toată fișa HR editabilă, exact cum a fost cerut ("din fișa completă").
 const CAMPURI_MODIFICABILE = [
-  { key: 'tip_contract', label: 'Tip contract', type: 'select', options: [
+  { key: 'tip_contract', label: 'Tip contract', inActe: false, type: 'select', options: [
     { value: 'determinat', label: 'CIM Determinat' },
     { value: 'nedeterminat', label: 'CIM Nedeterminat' },
     { value: 'colaborator', label: 'Colaborator' },
   ] },
-  { key: 'obiect_contract', label: 'Obiectul contractului (colaboratori)', type: 'text' },
-  { key: 'calitate_contract', label: 'Calitate (colaboratori)', type: 'select', options: [
+  { key: 'obiect_contract', label: 'Obiectul contractului (colaboratori)', soloColaborator: true, type: 'text' },
+  { key: 'calitate_contract', label: 'Calitate (colaboratori)', soloColaborator: true, type: 'select', options: [
     { value: 'prestator', label: 'Prestator' },
     { value: 'cedent', label: 'Cedent' },
   ] },
-  { key: 'data_final_contract', label: 'Data final contract', type: 'date' },
+  { key: 'data_final_contract', label: 'Data final contract (prelungire)', fixedTermOnly: true, type: 'date' },
   { key: 'grad', label: 'Grad', type: 'text' },
   { key: 'atributie_id', label: 'Atribuție', type: 'attributie' },
   { key: 'norma_ore', label: 'Normă de lucru', type: 'select', options: [2, 4, 6, 8].map((v) => ({ value: String(v), label: `${v}h` })) },
@@ -1094,11 +1094,20 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
   )
   const contractSel = salvate.find((c) => c.id === contractAles)
   // valoarea actuală a unui câmp: din contractul ales sau din datele personale
+  // Câmpurile care pot fi alese pentru contractul selectat
+  const tipCtr = contractSel?.tip_contract
+  const campuriDisponibile = CAMPURI_MODIFICABILE.filter((c) => {
+    if (c.inActe === false) return false
+    if (c.soloColaborator && tipCtr !== 'colaborator') return false
+    if (c.fixedTermOnly && !(tipCtr === 'determinat' || tipCtr === 'colaborator')) return false
+    return true
+  })
   const valoareActuala = (key) => (esteCampContract(key) ? contractSel?.[key] : profil[key])
   const [istoric, setIstoric] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
+  const [numarAct, setNumarAct] = useState('')
   const [selectate, setSelectate] = useState({})
   const [valoriNoi, setValoriNoi] = useState({})
   const [saving, setSaving] = useState(false)
@@ -1130,7 +1139,21 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
     e.preventDefault()
     setError('')
 
-    const campuriAlese = Object.keys(selectate).filter((k) => selectate[k])
+    if (!numarAct.trim()) {
+      setError('Completează numărul actului adițional.')
+      return
+    }
+    if (!data) {
+      setError('Completează data actului adițional.')
+      return
+    }
+    const anAct = data.slice(0, 4)
+    if (istoric.some((a) => String(a.numar_act || '').trim().toLowerCase() === numarAct.trim().toLowerCase() && String(a.data || '').slice(0, 4) === anAct)) {
+      setError(`Există deja un act adițional cu numărul ${numarAct.trim()} în anul ${anAct}.`)
+      return
+    }
+
+    const campuriAlese = Object.keys(selectate).filter((k) => selectate[k] && campuriDisponibile.some((c) => c.key === k))
     if (campuriAlese.length === 0) {
       setError('Bifează cel puțin un câmp de modificat.')
       return
@@ -1160,6 +1183,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
     const { error: err1 } = await supabase.from('hr_acte_aditionale').insert({
       angajat_id: angajat.id,
       data,
+      numar_act: numarAct.trim(),
       modificari,
       contract_id: aplicatPeContract ? contractSel.id : null,
     })
@@ -1191,6 +1215,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
 
     setSelectate({})
     setValoriNoi({})
+    setNumarAct('')
     setShowForm(false)
     onApplied(formUpdates, aplicatPeContract ? contractSel.id : null)
     load()
@@ -1211,14 +1236,29 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-4 space-y-3 rounded-xl border border-slate-200 p-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Data actului</label>
-            <input
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Număr act adițional <span className="text-rose-500">*</span>
+              </label>
+              <input
+                value={numarAct}
+                onChange={(e) => setNumarAct(e.target.value)}
+                placeholder="ex. 3"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Data actului adițional <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={data}
+                onChange={(e) => setData(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus-ring"
+              />
+            </div>
           </div>
 
           {salvate.length > 1 && (
@@ -1226,7 +1266,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
               <label className="mb-1 block text-xs font-medium text-slate-600">La ce contract se aplică (pentru câmpurile de contract)</label>
               <select
                 value={contractAles}
-                onChange={(e) => { setContractAles(e.target.value); setValoriNoi({}) }}
+                onChange={(e) => { setContractAles(e.target.value); setValoriNoi({}); setSelectate({}) }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus-ring"
               >
                 {salvate.map((c) => (
@@ -1239,7 +1279,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-600">Ce se modifică?</p>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              {CAMPURI_MODIFICABILE.map((c) => (
+              {campuriDisponibile.map((c) => (
                 <label key={c.key} className="flex items-center gap-1.5 text-xs text-slate-700">
                   <input type="checkbox" checked={!!selectate[c.key]} onChange={() => toggleCamp(c.key)} />
                   {c.label}
@@ -1250,7 +1290,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
 
           {Object.keys(selectate).some((k) => selectate[k]) && (
             <div className="space-y-2 rounded-lg bg-slate-50 p-2.5">
-              {CAMPURI_MODIFICABILE.filter((c) => selectate[c.key]).map((c) => (
+              {campuriDisponibile.filter((c) => selectate[c.key]).map((c) => (
                 <div key={c.key}>
                   <label className="mb-1 block text-[11px] font-medium text-slate-600">
                     {c.label} <span className="text-slate-400">(actual: {formatValoare(c.key, valoareActuala(c.key), attributions)})</span>
@@ -1331,7 +1371,7 @@ function ActeAditionale({ angajat, profil, contracte, etichetaDraft, attribution
           {istoric.map((act) => (
             <div key={act.id} className="rounded-lg border border-slate-100 p-2.5 text-xs">
               <p className="mb-1 font-medium text-slate-700">
-                {act.data}
+                Act adițional {act.numar_act ? `nr. ${act.numar_act}` : '(fără număr)'} din {act.data}
                 {act.contract_id && contracte.length > 1 && contracte.find((c) => c.id === act.contract_id)
                   ? ` · ${etichetaDraft(contracte.find((c) => c.id === act.contract_id), contracte.findIndex((c) => c.id === act.contract_id))}`
                   : ''}
